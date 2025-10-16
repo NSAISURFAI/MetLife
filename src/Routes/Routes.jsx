@@ -7,8 +7,11 @@ import LoginPage from "../Pages/LoginPage/LoginPage";
 import RegisterPage from "../Pages/Register/RegisterPage";
 import ForgotPassword from "../Pages/ForgotPassword/ForgotPassword";
 import VideoCreationOptions from "../Pages/OneFrame/OneFrame";
-import UploadScript from "../Pages/UploadScriptPage/UploadScript";
-import GenerateScript from "../Pages/GenerateScipt/GenerateScript";
+import UploadScript from '../Pages/UploadScriptPage/UploadScript'
+import GenerateScript from "../Pages/GenerateScipt/GenerateScript"
+import GenerateVisualsPage from "../Pages/GenerateVisualPage/GenerateVisualPage"
+import VideoProgressPage from '../Pages/VedioPregressPage/VedioProgressvideo'
+import UploadClipsPage from '../Pages/UploadVedioPage/UploadVideoPage'
 
 import LoginLayout from "../components/Login/Login"; // Assuming this is your layout
 import { getToken, getLoggedInUserType, USERS } from "../utils";
@@ -17,6 +20,10 @@ import { getToken, getLoggedInUserType, USERS } from "../utils";
 const ProtectedRoute = ({ element, allowedRoles = [] }) => {
   const token = getToken();
   const userType = getLoggedInUserType();
+
+
+
+
 
   return element;
 };
@@ -34,10 +41,10 @@ const Authorization = ({ element }) => {
 
 // ✅ Final Router Configuration
 export const router = createBrowserRouter([
-  //  {
-  //   path: "/",
-  //   element: <Authorization element={<LoginPage />} />,
-  // },
+   {
+    path: "/",
+    element: <Authorization element={<LoginPage />} />,
+  },
   {
     path: "/login",
     element: <Authorization element={<LoginPage />} />,
@@ -55,15 +62,27 @@ export const router = createBrowserRouter([
     element: <Authorization element={<ForgotPassword />} />,
   },
   {
-    path: "/",
-    element: <VideoCreationOptions />,
+    path: "/video-frame",
+    element: <VideoCreationOptions />
   },
   {
-    path: "/upload-script",
-    element: <UploadScript />,
+    path : "/upload-script",
+    element : <UploadScript/>
   },
   {
-    path: "/generate-script",
-    element: <GenerateScript />,
+    path : "/generate-script",
+    element : <GenerateScript/>
   },
+  {
+    path : "/generate-visual-page",
+    element :<GenerateVisualsPage/>
+  },
+  {
+    path : "video-upload",
+    element : <VideoProgressPage/>
+  },
+   {
+    path : "upload-generated-clips",
+    element : <UploadClipsPage/>
+  }
 ]);
