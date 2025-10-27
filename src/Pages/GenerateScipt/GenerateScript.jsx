@@ -20,6 +20,8 @@ import Input from "../../components/common/Input";
 import api from "../../api/axios";
 import GradientLoader from "../../components/common/GradientLoader";
 import { IoArrowBackCircleOutline } from "react-icons/io5";
+import FullScreenGradientLoader from "../../components/common/GradientLoader";
+import { showToast } from "../../utils/toast";
 
 // import Toastfrom  from "../../components/common/ToastBox"
 
@@ -95,36 +97,28 @@ const GenerateScript = () => {
 
   const handleGenerate = () => {
     if (!language) {
-      window.toast?.error("Please Select Language in Video Filters");
+      showToast.error("Please select Language in Video Filters");
     } else if (!videoType) {
-      window.toast?.error("Please Select Video Type in Video Filters");
+      showToast.error("Please select Video Type in Video Filters");
     } else if (!audience) {
-      window.toast?.error("Please Enter Target Audience in Video Filters");
+      showToast.error("Please enter Target Audience in Video Filters");
     } else if (!duration) {
-      window.toast?.error("Please Select Duration in Video Filters");
+      showToast.error("Please select Duration in Video Filters");
     } else if (!topn) {
-      window.toast?.error("Please Select Top N in Model Filters");
+      showToast.error("Please select Top N in Model Filters");
     } else if (!model) {
-      window.toast?.error("Please Select Model in Model Filters");
+      showToast.error("Please select Model in Model Filters");
     } else if (!datasource) {
-      window.toast?.error("Please Select Data Source in Model Filters");
+      showToast.error("Please select Data Source in Model Filters");
     } else {
+      showToast.info("Generating video...");
       apiCall();
     }
   };
 
   const apiCall = async () => {
     setLoader(true);
-    const payload = {
-      brief: "create a video on basis of cricket",
-      suggested_duration: "2 minutes",
-      language: "English",
-      target_audience: "General Audience",
-      video_style: "mixed",
-      model: "gpt-4o-mini",
-      top_n: 5,
-      data_source: "metlife",
-    };
+
     const new_payload = {
       brief: scriptText,
       suggested_duration: duration,
@@ -143,9 +137,13 @@ const GenerateScript = () => {
         if (result?.data?.scenes) {
           navigate(`/scenes/${result?.data?.script_id}`);
         }
+      } else {
+        showToast?.error("Some Issue In Generating");
       }
       console.log("Video created successfully:", result);
     } catch (err) {
+      showToast?.error("Some Issue In Generating");
+
       console.error("Video creation failed:", err);
     } finally {
       setLoader(false);
@@ -155,17 +153,16 @@ const GenerateScript = () => {
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa" }}>
       <OneFrameHeader />
-
+      {loader && <FullScreenGradientLoader />}
       <main className={styles.cardWrap}>
         <div className={styles.card}>
           <div className={styles.headerRow}>
             <h1 className={styles.title}>Generate Script</h1>
-            <Button className={styles.icon}>
-              <IoArrowBackCircleOutline
-                size={30}
-                onClick={() => navigate(-1)}
-              />{" "}
-              Back
+            <Button
+              className={styles.icon}
+              onClick={() => navigate("/video-frame")}
+            >
+              <IoArrowBackCircleOutline size={30} /> Back
             </Button>
           </div>
 
