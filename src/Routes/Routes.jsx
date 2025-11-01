@@ -8,6 +8,7 @@ import RegisterPage from "../Pages/Register/RegisterPage";
 import ForgotPassword from "../Pages/ForgotPassword/ForgotPassword";
 import VideoCreationOptions from "../Pages/OneFrame/OneFrame";
 import UploadScript from "../Pages/UploadScriptPage/UploadScript";
+import TranslatedScript from "../Pages/TrannslatedScript/TranslatedScript";
 import GenerateScript from "../Pages/GenerateScipt/GenerateScript";
 import GenerateVisualsPage from "../Pages/GenerateVisualPage/GenerateVisualPage";
 import VideoProgressPage from "../Pages/VedioPregressPage/VedioProgressvideo";
@@ -15,6 +16,7 @@ import UploadClipsPage from "../Pages/UploadVedioPage/UploadVideoPage";
 import ScriptPage from "../Pages/AddNewScriptPage/AddNewScriptPage";
 import LoginLayout from "../components/Login/Login"; // Assuming this is your layout
 import { getToken, getLoggedInUserType, USERS } from "../utils";
+import Layout from "../components/layout/Layout";
 
 // ✅ Protected Route Component
 const ProtectedRoute = ({ element, allowedRoles = [] }) => {
@@ -58,31 +60,40 @@ export const router = createBrowserRouter([
     element: <Authorization element={<ForgotPassword />} />,
   },
   {
-    path: "/video-frame",
-    element: <VideoCreationOptions />,
-  },
-  {
-    path: "/upload-script",
-    element: <UploadScript />,
-  },
-  {
-    path: "/generate-script",
-    element: <GenerateScript />,
-  },
-  {
-    path: "/generate-visual-page",
-    element: <GenerateVisualsPage />,
-  },
-  {
-    path: "video-upload",
-    element: <VideoProgressPage />,
-  },
-  {
-    path: "upload-generated-clips",
-    element: <UploadClipsPage />,
-  },
-  {
-    path: "scenes/:id",
-    element: <ScriptPage />,
+    element: <Layout />,
+    children: [
+      {
+        path: "/video-frame",
+        element: <VideoCreationOptions />,
+      },
+      {
+        path: "/upload-script",
+        element: <UploadScript />,
+      },
+        {
+        path: "/translated-script",
+        element: <TranslatedScript />,
+      },
+      {
+        path: "/generate-script",
+        element: <GenerateScript />,
+      },
+      {
+        path: "/generate-visual-page",
+        element: <GenerateVisualsPage />,
+      },
+      {
+        path: "video-upload",
+        element: <VideoProgressPage />,
+      },
+      {
+        path: "upload-generated-clips",
+        element: <UploadClipsPage />,
+      },
+      {
+        path: "scenes/:id",
+        element: <ScriptPage />,
+      },
+    ],
   },
 ]);
