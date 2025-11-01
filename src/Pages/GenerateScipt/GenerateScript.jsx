@@ -16,7 +16,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import OneFrameHeader from "../../components/common/OneFrameHeader";
 import Footer from "../../components/common/mainFooter";
-import path from "../../assets/path.svg";
+import path from "../../assets/copy_icon.svg";
 
 import Input from "../../components/common/Input";
 import api from "../../api/axios";
