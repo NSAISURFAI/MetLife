@@ -10,6 +10,7 @@ import {
   IconButton,
   Stack,
   Button,
+  Tooltip,
 } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -45,10 +46,12 @@ function DynamicTable({
   showDragAndActions = true,
   pdfId,
 }) {
-  // console.log(extraDetails, "extraDetails");
-  const { id } = useParams();
-  // console.log(id, "idCheck")
+  const [tableExtraData, setTableExtraData] = useState({});
+  useEffect(() => {
+    setTableExtraData(extraDetails);
+  }, [extraDetails]);
 
+  const { id } = useParams();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [openPopUp, setOpenPopup] = useState(false);
@@ -66,14 +69,9 @@ function DynamicTable({
     "Romanian",
     "Ukrainian",
     "Bangla",
-    // "English",
-    // "French",
-    // "German",
-    // "Italian",
-    // "Japanese",
   ];
   const [loader, setLoader] = useState(false);
-  const [selectedLang, setSelectedLang] = useState(null);
+  const [selectedLang, setSelectedLang] = useState("English");
   const [showSourceData, setShowSourceData] = useState([]);
   const actions = [
     { icon: <img src={copy} />, onClick: (row) => addScene(row) },
@@ -86,10 +84,11 @@ function DynamicTable({
   const [openShowPopup, setOpenShowPopup] = useState(false);
   const [openRegenerateePopup, setOpenRegeneratePopup] = useState(false);
 
-  // console.log(rows, data);
   useEffect(() => {
-    settingDataInRows(extraDetails?.scenes);
-  }, [extraDetails?.scenes]);
+    if (tableExtraData?.scenes) {
+      settingDataInRows(tableExtraData?.scenes);
+    }
+  }, [tableExtraData?.scenes]);
 
   const settingDataInRows = (reqData) => {
     let newdata = reqData?.map((item, index) => {
@@ -148,7 +147,6 @@ function DynamicTable({
       });
       if (response.status === 200) {
         const data = await response.json();
-        // console.log(data?.documents, "check")
         setShowSourceData(data?.documents);
       }
     } catch (error) {
@@ -162,9 +160,9 @@ function DynamicTable({
   const handleDownloadType = (type) => {
     try {
       if (type === "pdf") {
-        downloadScriptPdf({ ...extraDetails, scenes: rows });
+        downloadScriptPdf({ ...tableExtraData, scenes: rows });
       } else if (type === "word") {
-        downloadScriptWord({ ...extraDetails, scenes: rows });
+        downloadScriptWord({ ...tableExtraData, scenes: rows });
       }
       setOpenDownloadPopup(false);
     } catch (err) {
@@ -173,7 +171,6 @@ function DynamicTable({
   };
 
   const handleUpdate = (data) => {
-    // setSceneData({...sceneData,sceneData:})
     console.log(data, "check-data");
     // // // edit
     if (data?.fieldData) {
@@ -216,11 +213,6 @@ function DynamicTable({
 
   const handleTranslateScript = async () => {
     const file_id = pdfId || id;
-    // const data = {
-    //   file_id: file_id,
-    //   language: selectedLang,
-    //   provider: 'azure'
-    // };
     if (!file_id) return;
     const formData = new FormData();
     if (id) {
@@ -239,9 +231,6 @@ function DynamicTable({
     try {
       const response = await fetch(`${BASE_URL}translate-script-json`, {
         method: "POST",
-        // headers: {
-        //   "Content-Type": "application/json",
-        // },
         body: formData,
       });
       if (!response.ok) {
@@ -279,14 +268,27 @@ function DynamicTable({
             >
               + Add Scene
             </Button>
-            <Button
-              variant="contained"
-              className={styles1.primaryBtn}
-              onClick={handleShowSource}
-              disabled={extraDetails?.data_source == "openai"}
+            <Tooltip
+              title={
+                tableExtraData?.data_source === "openai"
+                  ? "OpenAI does not have any source"
+                  : ""
+              }
+              disableHoverListener={tableExtraData?.data_source !== "openai"}
+              arrow
             >
-              Show Source
-            </Button>
+              <span>
+                <Button
+                  variant="contained"
+                  className={styles1.primaryBtn}
+                  onClick={handleShowSource}
+                  disabled={tableExtraData?.data_source == "openai"}
+                >
+                  Show Source
+                </Button>
+              </span>
+            </Tooltip>
+
             <ShowSourcePopup
               open={openShowPopup}
               onClose={() => setOpenShowPopup(false)}
@@ -321,7 +323,6 @@ function DynamicTable({
                 <TableHead>
                   <TableRow className={styles.headRow}>
                     {/* Drag handle header cell */}
-                    {/* <TableCell className={styles.headCell}></TableCell> */}
                     {showDragAndActions && (
                       <TableCell className={styles.headCell}></TableCell>
                     )}
@@ -486,6 +487,8 @@ function DynamicTable({
               <RegenerateScriptPopup
                 open={openRegenerateePopup}
                 onClose={() => setOpenRegeneratePopup(false)}
+                id={id}
+                setTableExtraData={setTableExtraData}
                 // data={showSourceData}
               />
             </>
