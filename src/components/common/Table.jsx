@@ -31,6 +31,9 @@ import PopupModal from "../popUps/LanguagePopup";
 import { toast } from "react-toastify";
 import { BASE_URL } from "../../api/axios";
 import FullScreenGradientLoader from "./GradientLoader";
+import { MdDone } from "react-icons/md";
+import { useDispatch, useSelector } from "react-redux";
+import { postTranslatedDataSave } from "../../redux/features/saveSlice";
 
 /**
  * props:
@@ -46,10 +49,14 @@ function DynamicTable({
   showDragAndActions = true,
   pdfId,
 }) {
+  // console.log(extraDetails, "extraDetails");
+
   const [tableExtraData, setTableExtraData] = useState({});
   useEffect(() => {
     setTableExtraData(extraDetails);
   }, [extraDetails]);
+  // console.log(tableExtraData, "tableExtraData");
+  // console.log("Before_Save: ", extraDetails);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -73,16 +80,23 @@ function DynamicTable({
   const [loader, setLoader] = useState(false);
   const [selectedLang, setSelectedLang] = useState("English");
   const [showSourceData, setShowSourceData] = useState([]);
+  const [sceneData, setSceneData] = useState({});
   const actions = [
     { icon: <img src={copy} />, onClick: (row) => addScene(row) },
     {
       icon: <img src={reuse} />,
-      onClick: (row) => alert(`Delete ${row["Scene No."]}`),
+      onClick: (row) => {
+        setSceneData(row);
+
+        setOpenRegeneratePopup(true);
+      },
     },
   ];
+  const dispatch = useDispatch();
   const [openDownloadPopup, setOpenDownloadPopup] = useState(false);
   const [openShowPopup, setOpenShowPopup] = useState(false);
   const [openRegenerateePopup, setOpenRegeneratePopup] = useState(false);
+  const { saveLoader } = useSelector((store) => store.SaveTranslatedData);
 
   useEffect(() => {
     if (tableExtraData?.scenes) {
@@ -95,10 +109,10 @@ function DynamicTable({
       let data = {
         // "Scene No.": item?.scene_number,
         "Scene No.": index + 1,
-        Script: item?.description,
-        OST: item?.on_screen_text ?? "-",
-        Type: item?.scene_type,
-        id: item?.scene_id,
+        Script: item?.description ?? item?.Script ?? "",
+        OST: item?.on_screen_text ?? item?.OST ?? "-",
+        Type: item?.scene_type ?? item?.Type ?? "",
+        id: item?.scene_id ?? item?.id ?? "",
       };
       return data;
     });
@@ -214,6 +228,9 @@ function DynamicTable({
   const handleTranslateScript = async () => {
     const file_id = pdfId || id;
     if (!file_id) return;
+    // if(!selectedLang) {
+    //   toast.error("Please slect a language to translate.")
+    // }
     const formData = new FormData();
     if (id) {
       formData.append("script_id", file_id);
@@ -255,6 +272,34 @@ function DynamicTable({
     }
   };
 
+  const handleSave = () => {
+    // const data = {
+    //   data: {extraDetails},
+    // };
+    const data = {
+      data: extraDetails,
+    };
+    dispatch(postTranslatedDataSave(data));
+  };
+  // console.log(sceneData, "sceneData");
+  const handleSetData = (data) => {
+    if (sceneData?.id) {
+      let scenes = [...rows]?.map((item) => {
+        if (item?.["Scene No."] == sceneData?.["Scene No."]) {
+          let new_data = {
+            ...data,
+          };
+          return new_data;
+        } else {
+          return item;
+        }
+      });
+      console.log(scenes);
+      setTableExtraData({ ...extraDetails, scenes: scenes });
+    } else {
+      setTableExtraData(data);
+    }
+  };
   return (
     <>
       <div className={styles1.header}>
@@ -310,6 +355,7 @@ function DynamicTable({
           </div>
         )}
       </div>
+      {saveLoader && <FullScreenGradientLoader text={"Loading..."} />}
       {loader && <FullScreenGradientLoader text={loaderText} />}
       <TableContainer component={Paper} className={styles.tablePaper}>
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -457,7 +503,10 @@ function DynamicTable({
                   }`}
                   onClick={() => setSelectedLang(lang)}
                 >
-                  {lang}
+                  {selectedLang === lang && (
+                    <MdDone size={20} className={styles.tickIcon} />
+                  )}
+                  <span>{lang}</span>
                 </div>
               ))}
             </div>
@@ -480,25 +529,37 @@ function DynamicTable({
               <Button
                 variant="outlined"
                 className={styles.largeOutline}
-                onClick={() => setOpenRegeneratePopup(true)}
+                onClick={() => {
+                  setSceneData({});
+                  setOpenRegeneratePopup(true);
+                }}
               >
                 Regenerate Script
               </Button>
               <RegenerateScriptPopup
                 open={openRegenerateePopup}
-                onClose={() => setOpenRegeneratePopup(false)}
+                onClose={() => {
+                  setOpenRegeneratePopup(false);
+
+                  setSceneData({});
+                }}
                 id={id}
-                setTableExtraData={setTableExtraData}
+                // setTableExtraData={setTableExtraData}
+                setTableExtraData={(data) => handleSetData(data)}
+                sceneId={sceneData}
                 // data={showSourceData}
               />
             </>
           )}
-
-          {!showDragAndActions && (
-            <Button variant="outlined" className={styles.largeOutline}>
-              Save
-            </Button>
-          )}
+          <Button
+            label={saveLoader ? "Saving" : "Save"}
+            variant="outlined"
+            className={styles.largeOutline}
+            onClick={handleSave}
+            disabled={saveLoader}
+          >
+            Save
+          </Button>
 
           <Button
             variant="contained"
@@ -508,9 +569,13 @@ function DynamicTable({
             Download Script
           </Button>
           {showDragAndActions && (
-            <Button variant="contained" className={styles.primaryBtn}>
-              Create Visual Content
-            </Button>
+            <Tooltip title="Feature coming soon..." arrow>
+              <span>
+                <Button variant="contained" className={styles.primaryBtn}>
+                  Create Visual Content
+                </Button>
+              </span>
+            </Tooltip>
           )}
         </Stack>
 
