@@ -30,7 +30,7 @@ import RegenerateScriptPopup from "./popup/RegenerateScriptPopup";
 import ButtonComp from "./Buton/Button";
 import PopupModal from "../popUps/LanguagePopup";
 import { toast } from "react-toastify";
-import { BASE_URL } from "../../api/axios";
+import api, { BASE_URL } from "../../api/axios";
 import FullScreenGradientLoader from "./GradientLoader";
 import { MdDone } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
@@ -41,6 +41,8 @@ import {
 } from "../../redux/features/saveSlice";
 import DeleteScenePopup from "./popup/DeleteScenePopup";
 import { postCreateVisualContent } from "../../redux/features/createVisualSlice";
+import { postDeleteScene } from "../../redux/features/scriptSlice";
+import { languages } from "../../utils/languageOptions";
 
 /**
  * props:
@@ -71,17 +73,6 @@ function DynamicTable({
   const [popupTitle, setPopupTitle] = useState("Add New Script");
   const [loaderText, setLoaderText] = useState("");
   const [open, setOpen] = useState(false);
-  const languages = [
-    "Spanish",
-    "Hindi",
-    "English",
-    "Arabic",
-    "Nepali",
-    "Portuguese",
-    "Romanian",
-    "Ukrainian",
-    "Bangla",
-  ];
   const [loader, setLoader] = useState(false);
   const [selectedLang, setSelectedLang] = useState("");
   const [showSourceData, setShowSourceData] = useState([]);
@@ -102,6 +93,7 @@ function DynamicTable({
   const { saveVisualContentData, saveVisualContentLoader } = useSelector(
     (store) => store.CreateVisualContent
   );
+  const { scriptLoader, scriptData } = useSelector((store) => store.Script);
 
   const actions = [
     {
@@ -206,9 +198,11 @@ function DynamicTable({
 
   const handleDownloadScript = () => {
     setOpenDownloadPopup(true);
-    setMakeChanges(true);
+    // setMakeChanges(true);
   };
   const [showSourceLoader, setShowSourceLoader] = useState(false);
+  const [deleteLoader, setDeleteLoader] = useState(false);
+
   const handleShowSource = async () => {
     setOpenShowPopup(true);
     setShowSourceLoader(true);
@@ -229,7 +223,7 @@ function DynamicTable({
     } finally {
       setShowSourceLoader(false);
     }
-    setMakeChanges(true);
+    // setMakeChanges(true);
   };
 
   const handleDownloadType = (type) => {
@@ -243,7 +237,7 @@ function DynamicTable({
     } catch (err) {
       console.error("Error generating file:", err);
     }
-    setMakeChanges(true);
+    // setMakeChanges(true);
   };
 
   const handleUpdate = (data) => {
@@ -291,9 +285,6 @@ function DynamicTable({
   const handleTranslateScript = async () => {
     const file_id = pdfId || id;
     if (!file_id) return;
-    // if(!selectedLang) {
-    //   toast.error("Please slect a language to translate.")
-    // }
     const formData = new FormData();
     if (id) {
       formData.append("script_id", file_id);
@@ -318,7 +309,6 @@ function DynamicTable({
         return;
       }
       const translatedData = await response.json();
-      console.log(translatedData, "translated_data");
       setTableExtraData(translatedData?.data);
       // settingDataInRows(translatedData?.data?.scenes);
       // downloadScriptPdf(translatedData?.data,true);
@@ -361,17 +351,40 @@ function DynamicTable({
   };
 
   const handleDeleteScene = (scene) => {
-    console.log(scene, "check_delete_data");
     setSelectedScene(scene);
     setOpenDeletePopup(true);
     setMakeChanges(true);
   };
 
-  const confirmDeleteScene = () => {
-    // console.log("Deleted scene:", selectedScene);
+  const confirmDeleteScene = async (scene) => {
+    const payload = {
+      script_id: id,
+      scene_id: scene.id,
+    };
+    setDeleteLoader(true);
+    try {
+      await api.post("mongo/delete_scene", payload);
+      successDelete(scene);
+      setRows((prev) => prev.filter((item) => item.id !== scene.id));
+      setOpenDeletePopup(false);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setDeleteLoader(false);
+    }
+  };
 
-    setOpenDeletePopup(false);
-    setMakeChanges(true);
+  const successDelete = (scene) => {
+    let updatedRows = [...rows].filter((item) => item.id !== scene.id);
+    console.log(updatedRows, "Updated_rows");
+
+    let Updated_rows = updatedRows.map((item, index) => {
+      let data = { ...item };
+
+      data["Scene No."] = index + 1;
+      return data;
+    });
+    setRows(Updated_rows);
   };
 
   const handleSave = () => {
@@ -387,13 +400,7 @@ function DynamicTable({
   };
 
   const handleCreateVisualContent = () => {
-    dispatch(postCreateVisualContent(tableExtraData))
-    .then((result) => {
-      console.log(result, "check_result");
-      if (result) {
-        navigate(`/create-visual-content/${result?.data?.prompt_batch_id}`);
-      }
-    });
+    dispatch(postCreateVisualContent(tableExtraData));
   };
 
   return (
@@ -453,9 +460,12 @@ function DynamicTable({
           </div>
         )}
       </div>
-      {saveVisualContentLoader && <FullScreenGradientLoader text="loading..." />}
+      {saveVisualContentLoader && (
+        <FullScreenGradientLoader text="loading..." />
+      )}
       {saveLoader && <FullScreenGradientLoader text={"Loading..."} />}
       {loader && <FullScreenGradientLoader text={loaderText} />}
+      {scriptLoader && <FullScreenGradientLoader text="Deleting..." />}
       <TableContainer component={Paper} className={styles.tablePaper}>
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="table" isDropDisabled={!showDragAndActions}>
@@ -572,6 +582,8 @@ function DynamicTable({
         onClose={() => setOpenDeletePopup(false)}
         onConfirm={confirmDeleteScene}
         rowData={selectedScene}
+        id={id}
+        loader={deleteLoader}
       />
 
       <div className={styles.footerButtons}>
@@ -690,15 +702,30 @@ function DynamicTable({
           )}
 
           {showDragAndActions && features && (
-            <Button
-              onClick={() => {
-                handleCreateVisualContent();
-              }}
-              variant="contained"
-              className={styles.primaryBtn}
-            >
-              Create Visual Content
-            </Button>
+            <>
+              <Tooltip
+                title={
+                  !saveTranslatedData
+                    ? "Please save before creating visual content."
+                    : ""
+                }
+                placement="top"
+                arrow
+              >
+                <span>
+                  <Button
+                    onClick={() => {
+                      handleCreateVisualContent();
+                    }}
+                    variant="contained"
+                    className={styles.primaryBtn}
+                    disabled={saveTranslatedData === null}
+                  >
+                    Create Visual Content
+                  </Button>
+                </span>
+              </Tooltip>
+            </>
           )}
         </Stack>
 

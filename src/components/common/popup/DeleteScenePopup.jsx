@@ -7,9 +7,21 @@ import {
   Button,
   Typography,
 } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import { postDeleteScene } from "../../../redux/features/scriptSlice";
+import api from "../../../api/axios";
+import FullScreenGradientLoader from "../GradientLoader";
 
-const DeleteScenePopup = ({ open, onClose, onConfirm, rowData }) => {
-    console.log(rowData, "Check_rowData")
+const DeleteScenePopup = ({
+  open,
+  onClose,
+  rowData,
+  id,
+  onConfirm,
+  loader,
+}) => {
+  const { scriptLoader } = useSelector((store) => store.Script);
+
   return (
     <Dialog
       open={open}
@@ -23,7 +35,15 @@ const DeleteScenePopup = ({ open, onClose, onConfirm, rowData }) => {
       <DialogTitle sx={{ fontWeight: 600, textAlign: "center" }}>
         Confirm Delete
       </DialogTitle>
-
+      {loader ? (
+        <>
+          <Typography textAlign="center">
+            <FullScreenGradientLoader text="loading" />
+          </Typography>
+        </>
+      ) : (
+        <></>
+      )}
       <DialogContent>
         <Typography
           variant="body1"
@@ -52,7 +72,7 @@ const DeleteScenePopup = ({ open, onClose, onConfirm, rowData }) => {
           No
         </Button>
         <Button
-          onClick={onConfirm}
+          onClick={() => onConfirm(rowData)}
           variant="contained"
           color="error"
           sx={{
