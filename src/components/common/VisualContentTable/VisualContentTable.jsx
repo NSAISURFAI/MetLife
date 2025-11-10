@@ -1,4 +1,5 @@
 import React from "react";
+import styles from "./visualContent.module.css";
 import {
   Table,
   TableBody,
@@ -6,11 +7,17 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Button,
   IconButton,
+  MenuItem,
+  Select,
 } from "@mui/material";
-import styles from "./promptTable.module.css";
 
-const PromptTable = ({ columns = [], rows = [], actions = [] }) => {
+const VisualContentTable = ({
+    columns = [],
+    rows = [],
+    actions = [],
+}) => {
   return (
     <>
       <TableContainer className={styles.tablePaper}>
@@ -62,4 +69,4 @@ const PromptTable = ({ columns = [], rows = [], actions = [] }) => {
   );
 };
 
-export default PromptTable;
+export default VisualContentTable;
