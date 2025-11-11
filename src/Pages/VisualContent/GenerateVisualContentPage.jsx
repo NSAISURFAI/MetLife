@@ -5,15 +5,18 @@ import styles from "./generateVisualContent.module.css";
 import Footer from "../../components/common/mainFooter";
 import copy from "../../assets/copy.svg";
 import reuse from "../../assets/reuse.svg";
-import { NoDataMessage } from "../../components/common/NoDataMessage";
+import upload from "../../assets/upload_icon.svg";
+import FullScreenGradientLoader from "../../components/common/GradientLoader";
 import VisualContentTable from "../../components/common/VisualContentTable/VisualContentTable";
+import { NoDataMessage } from "../../components/common/NoDataMessage";
 import { useDispatch, useSelector } from "react-redux";
 import { getGenerateVisualContentImage } from "../../redux/features/generateVisualSlice";
 import { useParams } from "react-router";
-import FullScreenGradientLoader from "../../components/common/GradientLoader";
+import ImageUploadPopup from "../../components/common/popup/ImageUploadPopup";
 
 const GenerateVisualContentPage = () => {
   const [rows, setRows] = useState([]);
+  const dummyImage = "https://dummyimage.com/50x50/e0e0e0/aaaaaa&text=No+Image";
   const columns = [
     { label: "Scene No.", key: "Scene_No." },
     {
@@ -35,17 +38,32 @@ const GenerateVisualContentPage = () => {
     {
       label: "Visual Image",
       key: "Visual_Image",
-      render: (value, row) => (
-        <img
-          src={value}
-          alt="visual"
+      render: (value, row, setPreviewImage) => (
+        <div
           style={{
-            width: 50,
-            height: 50,
-            objectFit: "cover",
-            borderRadius: 8,
+            width: "50px",
+            height: "50px",
+            padding: "6px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            cursor: "pointer",
           }}
-        />
+          onClick={() => setPreviewImage(value)}
+        >
+          <img
+            src={value}
+            alt="visual"
+            onError={(e) => (e.target.src = dummyImage)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              borderRadius: 5,
+            }}
+          />
+        </div>
       ),
     },
   ];
@@ -64,23 +82,28 @@ const GenerateVisualContentPage = () => {
       },
     },
     {
-      icon: <img src={reuse} />,
+      icon: <img src={upload} />,
       onClick: (row) => {
-        // handlePromptRegenerate(row);
+        handleImageUpload(row);
       },
     },
   ];
   const { generateVisualLoader, generateVisualContentData } = useSelector(
     (store) => store.GenerateVisualContent
   );
-  console.log(generateVisualContentData, "check");
+  console.log(generateVisualContentData, "generateVisualContentData");
+  const prompt_batch_id = generateVisualContentData?.prompt_batch_id;
+  const title = generateVisualContentData?.title;
   const dispatch = useDispatch();
   const { id } = useParams();
-  // console.log(id, "check_id");
+  const [popup, setPopup] = useState({
+    type: null,
+    data: null,
+  });
 
   useEffect(() => {
     dispatch(getGenerateVisualContentImage(id));
-  }, [dispatch, id]);
+  }, [id, dispatch]);
 
   useEffect(() => {
     if (generateVisualContentData?.visuals) {
@@ -93,35 +116,49 @@ const GenerateVisualContentPage = () => {
       console.log(item.image_url, "image_url");
       return {
         "Scene_No.": index + 1,
-        Visual_Type: item?.visual_type === "clip" ? "clip" : "image",
-        // Visual_Description:  item?.prompt ?? "-",
-        Visual_Description:
-          item?.visual_type === "clip"
-            ? item?.clip_prompt ?? "-"
-            : item?.prompt ?? "-",
-        Visual_Image: item?.image_url ?? "-",
+        Visual_Type: item?.visual_type,
+        Visual_Description: item?.prompt,
+        Visual_Image: item?.image_uploaded_url ?? item?.image_url ?? "-",
         scene_id: item?.scene_id ?? "",
         prompt_id: item?.prompt_id ?? "",
-        prompt: item?.prompt ?? "",
-        clip_prompt: item?.clip_prompt ?? "",
       };
     });
     setRows(newdata);
+  };
+
+  // Image upload function
+  const handleImageUpload = (data) => {
+    setPopup({
+      type: "upload",
+      data,
+    });
+  };
+
+  const closePopup = () => {
+    setPopup({
+      type: null,
+      data: null,
+    });
+  };
+
+  const handleImageUpdate = (data) => {
+    const updatedRows = rows.map((item) => {
+      if (item.scene_id === data.fieldData.scene_id) {
+        return {
+          ...item,
+          Visual_Image: data.new_image,
+        };
+      }
+      return item;
+    });
+    setRows(updatedRows);
   };
 
   return (
     <>
       <div className={styles.container}>
         <OneFrameHeader />
-        {/* {saveVisualContentLoader && (
-          <FullScreenGradientLoader text="loading..." />
-        )} */}
-        {/* {generateVisualLoader && (
-          <FullScreenGradientLoader
-            text="loading..."
-            loader={generateVisualLoader}
-          />
-        )} */}
+        {generateVisualLoader && <FullScreenGradientLoader text="loading..." />}
         <div className={styles.header}>
           <h2 className={styles.title}>
             {generateVisualContentData?.title || "Visual Content"}
@@ -136,20 +173,30 @@ const GenerateVisualContentPage = () => {
                 rows={rows}
                 actions={actions}
               />
+              {popup.type === "upload" && (
+                <ImageUploadPopup
+                  open={true}
+                  onClose={closePopup}
+                  fieldData={popup.data}
+                  script_id={id}
+                  prompt_batch_id={prompt_batch_id}
+                  title={title}
+                  handleImageUpdate={handleImageUpdate}
+                />
+              )}
+
+              <div className={styles.footerButtons}>
+                <Button variant="contained" className={styles.primaryBtn}>
+                  Audio & Animation Toolkit
+                </Button>
+              </div>
             </>
           ) : (
             <>
               <NoDataMessage filter="false" />
             </>
           )}
-
-          <div className={styles.footerButtons}>
-            <Button variant="contained" className={styles.primaryBtn}>
-              Audio & Animation Toolkit
-            </Button>
-          </div>
         </div>
-
         <Footer />
       </div>
     </>
