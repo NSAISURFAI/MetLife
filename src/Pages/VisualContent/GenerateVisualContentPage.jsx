@@ -8,12 +8,13 @@ import reuse from "../../assets/reuse.svg";
 import upload from "../../assets/upload_icon.svg";
 import FullScreenGradientLoader from "../../components/common/GradientLoader";
 import VisualContentTable from "../../components/common/VisualContentTable/VisualContentTable";
+import ImageUploadPopup from "../../components/common/popup/ImageUploadPopup";
+import EditVisualPopup from "../../components/common/popup/EditVisualPopup";
+import RegenerateImagePopup from "../../components/common/popup/RegenerateImagePopup";
 import { NoDataMessage } from "../../components/common/NoDataMessage";
 import { useDispatch, useSelector } from "react-redux";
 import { getGenerateVisualContentImage } from "../../redux/features/generateVisualSlice";
 import { useParams } from "react-router";
-import ImageUploadPopup from "../../components/common/popup/ImageUploadPopup";
-import EditVisualPopup from "../../components/common/popup/EditVisualPopup";
 
 const GenerateVisualContentPage = () => {
   const [rows, setRows] = useState([]);
@@ -42,7 +43,6 @@ const GenerateVisualContentPage = () => {
           }}
           onClick={() => {
             setPreviewImage(value);
-            console.log(row, "visulimges");
             setVisualImages(row);
           }}
         >
@@ -66,7 +66,6 @@ const GenerateVisualContentPage = () => {
     {
       icon: <img src={copy} />,
       onClick: (row) => {
-        // openEditPrompt(row);
         handleVisualEdit(row);
       },
     },
@@ -74,6 +73,7 @@ const GenerateVisualContentPage = () => {
       icon: <img src={reuse} />,
       onClick: (row) => {
         // handlePromptRegenerate(row);
+        handleImageRegenerate(row);
       },
     },
     {
@@ -106,19 +106,29 @@ const GenerateVisualContentPage = () => {
       settingDataInRows(generateVisualContentData?.visuals);
     }
   }, [generateVisualContentData?.visuals]);
+  console.log(generateVisualContentData?.visuals, "visuals");
 
   const settingDataInRows = (reqData) => {
+    console.log(reqData, "check_reg");
     let newdata = reqData?.map((item, index) => {
-      console.log(item.image_url, "image_url");
+      const firstImageUrl =
+        item?.image_uploaded_urls?.[0]?.url ||
+        item?.image_uploaded_url ||
+        item?.image_url ||
+        item?.url ||
+        "";
+      console.log(item, "image_url");
       return {
         "Scene_No.": index + 1,
         Visual_Type: item?.visual_type,
         Visual_Description: item?.prompt,
-        Visual_Image: item?.image_uploaded_url ?? item?.image_url,
+        // Visual_Image: item?.image_url,
+        Visual_Image: firstImageUrl,
+
         scene_id: item?.scene_id ?? "",
         prompt_id: item?.prompt_id ?? "",
         image_uploaded_urls: item?.image_uploaded_urls ?? [
-          { url: item?.image_uploaded_url ?? item?.image_url },
+          { url: item?.image_uploaded_url ?? item?.image_url ?? item.url },
         ],
       };
     });
@@ -141,6 +151,13 @@ const GenerateVisualContentPage = () => {
     });
   };
 
+  const handleImageRegenerate = (data) => {
+    setPopup({
+      type: "regenerate",
+      data,
+    });
+  };
+
   const closePopup = () => {
     setPopup({
       type: null,
@@ -149,6 +166,7 @@ const GenerateVisualContentPage = () => {
   };
 
   const handleImageUpdate = ({ fieldData, new_images }) => {
+    console.log(fieldData, "check");
     const updatedRows = rows.map((item) => {
       if (item.scene_id === fieldData.scene_id) {
         const lastImage = new_images?.length
@@ -223,6 +241,16 @@ const GenerateVisualContentPage = () => {
                   prompt_batch_id={prompt_batch_id}
                   handleUpdate={handleUpdate}
                   // handleImageUpdate={handleImageUpdate}
+                />
+              )}
+
+              {popup.type === "regenerate" && (
+                <RegenerateImagePopup
+                  open={true}
+                  onClose={closePopup}
+                  fieldData={popup.data}
+                  prompt_batch_id={prompt_batch_id}
+                  // handleUpdate={handleUpdate}
                 />
               )}
 

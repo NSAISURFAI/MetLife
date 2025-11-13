@@ -4,23 +4,28 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useSelector } from "react-redux";
 
-const ImageCarousel = ({ images = [], caroselIndex }) => {
+const ImageCarousel = ({ images = [], caroselIndex, previewImage }) => {
   const [index, setIndex] = useState(0);
   const { generateVisualContentData } = useSelector(
     (store) => store.GenerateVisualContent
   );
-  console.log(generateVisualContentData, "generateVisualContent");
-  //   const images = generateVisualContentData?.image_uploaded_urls ?? [];
+  console.log(images, "immges");
 
-  // reset to last image when images change
   useEffect(() => {
-    if (images?.length > 0) {
+    if (!images || images.length === 0) {
+      setIndex(0);
       caroselIndex(0);
-      setIndex(0); // show latest image by default
+      return;
+    }
+
+    if (index >= images.length) {
+      const newIndex = images.length - 1;
+      setIndex(newIndex);
+      caroselIndex(newIndex);
     }
   }, [images]);
 
-  if (!images || images?.length === 0) {
+  if (!images || images.length === 0) {
     return (
       <Typography
         variant="body2"
@@ -80,7 +85,7 @@ const ImageCarousel = ({ images = [], caroselIndex }) => {
         </IconButton>
 
         {/* IMAGE */}
-        <img
+        {/* <img
           src={images[index].url}
           alt="carousel-img"
           style={{
@@ -89,7 +94,23 @@ const ImageCarousel = ({ images = [], caroselIndex }) => {
             objectFit: "contain",
             borderRadius: 8,
           }}
-        />
+        /> */}
+        {images[index] ? (
+          <img
+            src={images[index].url}
+            alt="carousel-img"
+            style={{
+              width: "100%",
+              maxHeight: 260,
+              objectFit: "contain",
+              borderRadius: 8,
+            }}
+          />
+        ) : (
+          <Typography variant="body2" color="gray">
+            Image not found
+          </Typography>
+        )}
 
         <IconButton
           size="small"

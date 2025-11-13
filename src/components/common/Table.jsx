@@ -43,6 +43,7 @@ import DeleteScenePopup from "./popup/DeleteScenePopup";
 import { postCreateVisualContent } from "../../redux/features/createVisualSlice";
 import { postDeleteScene } from "../../redux/features/scriptSlice";
 import { languages } from "../../utils/languageOptions";
+import { postAudioAnimationData } from "../../redux/features/audioAnimationSlice";
 
 /**
  * props:
@@ -215,7 +216,8 @@ function DynamicTable({
       });
       if (response.status === 200) {
         const data = await response.json();
-        setShowSourceData(data?.documents);
+        // setShowSourceData(data?.documents);
+        setShowSourceData(data);
       }
     } catch (error) {
       // console.log(error);
@@ -388,7 +390,17 @@ function DynamicTable({
         ...tableExtraData,
       },
     };
-    dispatch(postTranslatedDataSave(data));
+    // const dataForAudio = {
+    //   ...tableExtraData,
+    // };
+    // console.log(data, dataForAudio, "check_data_For_Both");
+    dispatch(postTranslatedDataSave(data))
+    // .then((success) => {
+    //   if (success) {
+    //     dispatch(postAudioAnimationData(dataForAudio));
+    //   }
+    // });
+
     setMakeChanges(false);
   };
 
