@@ -163,8 +163,10 @@ const GenerateScript = () => {
           toast.success("Script generated successfully!");
           navigate(`/scenes/${result?.data?.script_id}`);
         } else {
-          console.log(result, "result_check")
-          toast.error( result?.data?.logline || "Something went wrong while generating!");
+          console.log(result, "result_check");
+          toast.error(
+            result?.data?.logline || "Something went wrong while generating!"
+          );
         }
       } else {
         showToast?.error("Some Issue In Generating");
@@ -443,7 +445,10 @@ const GenerateScript = () => {
 
       <SavedPromptsModal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={(text) => {
+          setOpen(false);
+          setScriptText(text);
+        }}
         prompts={promptData}
       />
     </Box>
