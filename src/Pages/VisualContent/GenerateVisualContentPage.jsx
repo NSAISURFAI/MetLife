@@ -15,6 +15,8 @@ import { NoDataMessage } from "../../components/common/NoDataMessage";
 import { useDispatch, useSelector } from "react-redux";
 import { getGenerateVisualContentImage } from "../../redux/features/generateVisualSlice";
 import { useParams } from "react-router";
+import { toast } from "react-toastify";
+import { postAudioAnimationData } from "../../redux/features/audioAnimationSlice";
 
 const GenerateVisualContentPage = () => {
   const [rows, setRows] = useState([]);
@@ -25,7 +27,7 @@ const GenerateVisualContentPage = () => {
       label: "Visual Type",
       key: "Visual_Type",
     },
-    { label: "Visual Description", key: "Visual_Description" },
+    { label: "Scenes", key: "Visual_Description" },
     {
       label: "Visual Image",
       key: "Visual_Image",
@@ -42,6 +44,11 @@ const GenerateVisualContentPage = () => {
             cursor: "pointer",
           }}
           onClick={() => {
+            if (row.Visual_Image.length === 0) {
+              toast.error("No Image found to preview");
+              setPreviewImage([]);
+              return;
+            }
             setPreviewImage(value);
             setVisualImages(row);
           }}
@@ -72,7 +79,6 @@ const GenerateVisualContentPage = () => {
     {
       icon: <img src={reuse} />,
       onClick: (row) => {
-        // handlePromptRegenerate(row);
         handleImageRegenerate(row);
       },
     },
@@ -87,6 +93,7 @@ const GenerateVisualContentPage = () => {
     (store) => store.GenerateVisualContent
   );
   console.log(generateVisualContentData, "generateVisualContentData");
+  const { audioAnimationLoader } = useSelector((store) => store.AudioAnimation);
   const prompt_batch_id = generateVisualContentData?.prompt_batch_id;
   const title = generateVisualContentData?.title;
   const dispatch = useDispatch();
@@ -102,34 +109,32 @@ const GenerateVisualContentPage = () => {
 
   useEffect(() => {
     if (generateVisualContentData?.visuals) {
-      console.log("useeffect triggered");
       settingDataInRows(generateVisualContentData?.visuals);
     }
   }, [generateVisualContentData?.visuals]);
-  console.log(generateVisualContentData?.visuals, "visuals");
 
   const settingDataInRows = (reqData) => {
-    console.log(reqData, "check_reg");
     let newdata = reqData?.map((item, index) => {
       const firstImageUrl =
-        item?.image_uploaded_urls?.[0]?.url ||
-        item?.image_uploaded_url ||
+        item?.images?.[0]?.url ||
+        item?.images ||
         item?.image_url ||
         item?.url ||
         "";
-      console.log(item, "image_url");
       return {
         "Scene_No.": index + 1,
-        Visual_Type: item?.visual_type,
-        Visual_Description: item?.prompt,
-        // Visual_Image: item?.image_url,
-        Visual_Image: firstImageUrl,
-
+        Visual_Type:
+          item?.visual_type === "clip" ? "Footage" : item?.visual_type,
+        Visual_Description: item?.description,
+        Visual_Image:
+          item?.images?.length > 0
+            ? item.images[item.images.length - 1]?.url
+            : firstImageUrl,
         scene_id: item?.scene_id ?? "",
         prompt_id: item?.prompt_id ?? "",
-        image_uploaded_urls: item?.image_uploaded_urls ?? [
-          { url: item?.image_uploaded_url ?? item?.image_url ?? item.url },
-        ],
+        new_prompt: item?.prompt,
+        image_uploaded_urls:
+          item?.images?.length > 0 ? item.images : [{ url: firstImageUrl }],
       };
     });
     setRows(newdata);
@@ -166,7 +171,6 @@ const GenerateVisualContentPage = () => {
   };
 
   const handleImageUpdate = ({ fieldData, new_images }) => {
-    console.log(fieldData, "check");
     const updatedRows = rows.map((item) => {
       if (item.scene_id === fieldData.scene_id) {
         const lastImage = new_images?.length
@@ -185,10 +189,8 @@ const GenerateVisualContentPage = () => {
   };
 
   const handleUpdate = (data) => {
-    console.log(data);
     if (data?.fieldData) {
       const newData = rows.map((item) => {
-        console.log(item);
         if (item?.scene_id === data.fieldData.scene_id) {
           return {
             ...item,
@@ -201,11 +203,54 @@ const GenerateVisualContentPage = () => {
     }
   };
 
+  const updateImagesInRow = (sceneId, newImages) => {
+    setRows((prev) =>
+      prev.map((row) =>
+        row.scene_id === sceneId
+          ? {
+              ...row,
+              image_uploaded_urls: newImages,
+              Visual_Image: newImages[newImages.length - 1]?.url || "",
+            }
+          : row
+      )
+    );
+  };
+  console.log(rows, "check_rows");
+  const updatePromptInRow = (data) => {
+    console.log(data, "check_data_inside_prompt");
+    // setRows((prev) =>
+    //   prev.map((row) =>
+    //     row.scene_id === data?.scene_id
+    //       ? { ...row, prompt: data?.new_prompt }
+    //       : row
+    //   )
+    // );
+    let updatedRows = [...rows]?.map((item) => {
+      let returnData = { ...item };
+      if (item.scene_id == data?.scene_id) {
+        returnData.new_prompt = data?.new_prompt;
+      }
+      return returnData;
+    });
+    setRows(updatedRows);
+  };
+
+  const handleAudioAndAnimation = () => {
+    const payload = {
+      script_id: id,
+    };
+    dispatch(postAudioAnimationData(payload));
+  };
+
   return (
     <>
       <div className={styles.container}>
         <OneFrameHeader />
         {generateVisualLoader && <FullScreenGradientLoader text="loading..." />}
+        {audioAnimationLoader && (
+          <FullScreenGradientLoader text="extracting..." />
+        )}
         <div className={styles.header}>
           <h2 className={styles.title}>
             {generateVisualContentData?.title || "Visual Content"}
@@ -219,6 +264,10 @@ const GenerateVisualContentPage = () => {
                 columns={columns}
                 rows={rows}
                 actions={actions}
+                updateImagesInRow={updateImagesInRow}
+                // prompt_batch_id={prompt_batch_id}
+                // handleUpdate={handleUpdate}
+                updatePromptInRow={updatePromptInRow}
               />
               {popup.type === "upload" && (
                 <ImageUploadPopup
@@ -240,7 +289,6 @@ const GenerateVisualContentPage = () => {
                   script_id={id}
                   prompt_batch_id={prompt_batch_id}
                   handleUpdate={handleUpdate}
-                  // handleImageUpdate={handleImageUpdate}
                 />
               )}
 
@@ -255,7 +303,11 @@ const GenerateVisualContentPage = () => {
               )}
 
               <div className={styles.footerButtons}>
-                <Button variant="contained" className={styles.primaryBtn}>
+                <Button
+                  variant="contained"
+                  className={styles.primaryBtn}
+                  onClick={handleAudioAndAnimation}
+                >
                   Audio & Animation Toolkit
                 </Button>
               </div>

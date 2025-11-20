@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./GenerateScript.module.css";
 import ButtonComp from "../../components/common/Buton/Button";
 import SelectComp from "../../components/common/select";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
   Accordion,
@@ -14,20 +14,20 @@ import {
   InputBase,
   Tooltip,
 } from "@mui/material";
+import { IoArrowBackCircleOutline } from "react-icons/io5";
+import { showToast } from "../../utils/toast";
+import { toast } from "react-toastify";
+import { useDispatch, useSelector } from "react-redux";
+import { getPromptsList } from "../../redux/features/promptSlice";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import OneFrameHeader from "../../components/common/OneFrameHeader";
 import Footer from "../../components/common/mainFooter";
 import path from "../../assets/copy_icon.svg";
-
 import Input from "../../components/common/Input";
 import api from "../../api/axios";
 import GradientLoader from "../../components/common/GradientLoader";
-import { IoArrowBackCircleOutline } from "react-icons/io5";
 import FullScreenGradientLoader from "../../components/common/GradientLoader";
-import { showToast } from "../../utils/toast";
-import { toast } from "react-toastify";
-
-// import Toastfrom  from "../../components/common/ToastBox"
+import SavedPromptsModal from "../../components/common/SavedPromptsModal";
 
 const videoTypeOptions = [
   { value: "narrator", label: "Narrator" },
@@ -95,6 +95,14 @@ const GenerateScript = () => {
   const [datasource, setDatasource] = useState("");
   const [loader, setLoader] = useState(false);
   const disableTopN = !datasource || datasource === "openai";
+  const dispatch = useDispatch();
+
+  const { promptData } = useSelector((store) => store.Prompts);
+  console.log(promptData, "prompt_data");
+
+  useEffect(() => {
+    dispatch(getPromptsList());
+  }, [dispatch]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -152,10 +160,11 @@ const GenerateScript = () => {
       const result = await api.post("generate-script", new_payload);
       if (result?.status == 200) {
         if (result?.data?.scenes && result?.data?.status === true) {
-          toast.success("Script generated successfully!")
+          toast.success("Script generated successfully!");
           navigate(`/scenes/${result?.data?.script_id}`);
         } else {
-          toast.error("Something went wrong while generating!")
+          console.log(result, "result_check")
+          toast.error( result?.data?.logline || "Something went wrong while generating!");
         }
       } else {
         showToast?.error("Some Issue In Generating");
@@ -167,6 +176,24 @@ const GenerateScript = () => {
       setLoader(false);
     }
   };
+
+  const [open, setOpen] = useState(false);
+
+  const prompts = [
+    "Explain React useEffect with examples.",
+    "Generate API code using Axios.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+    "Write optimized React components.",
+  ];
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa" }}>
@@ -204,8 +231,15 @@ const GenerateScript = () => {
               rows={8}
             />
 
-            <img src={path} alt="Bookmark" className={styles.bookmarkIcon} />
-            <button className={styles.savedBtn}>Saved Prompts</button>
+            {/* <img src={path} alt="Bookmark" className={styles.bookmarkIcon} /> */}
+            <button
+              className={styles.savedBtn}
+              onClick={() => {
+                setOpen(true);
+              }}
+            >
+              Saved Prompts
+            </button>
           </div>
           {/* Accordions */}
           <div className={styles.accordionGroup}>
@@ -364,26 +398,6 @@ const GenerateScript = () => {
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6, lg: 6 }}>
-                    {/* <Tooltip
-                      title={
-                        datasource === "openai"
-                          ? "OpenAI does not have any source"
-                          : ""
-                      }
-                      placement="left"
-                      arrow
-                    >
-                      <span>
-                        <SelectComp
-                          label="Top N"
-                          options={topNOptions}
-                          value={topn}
-                          onChange={setTopn}
-                          placeholder="Select Top N"
-                          disabled={datasource === "openai"}
-                        />
-                      </span>
-                    </Tooltip> */}
                     <Tooltip
                       title={
                         !datasource
@@ -426,6 +440,12 @@ const GenerateScript = () => {
         </div>
       </main>
       <Footer />
+
+      <SavedPromptsModal
+        open={open}
+        onClose={() => setOpen(false)}
+        prompts={promptData}
+      />
     </Box>
   );
 };
