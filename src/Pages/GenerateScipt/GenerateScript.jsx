@@ -89,7 +89,7 @@ const GenerateScript = () => {
   const [audience, setAudience] = useState("");
   const [title, setTitle] = useState("");
   const [language, setLanguage] = useState("English");
-  const [duration, setDuration] = useState("");
+  const [duration, setDuration] = useState("3 minutes");
   const [topn, setTopn] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
   const [datasource, setDatasource] = useState("");
@@ -98,8 +98,6 @@ const GenerateScript = () => {
   const dispatch = useDispatch();
 
   const { promptData } = useSelector((store) => store.Prompts);
-  console.log(promptData, "prompt_data");
-
   useEffect(() => {
     dispatch(getPromptsList());
   }, [dispatch]);
@@ -163,10 +161,7 @@ const GenerateScript = () => {
           toast.success("Script generated successfully!");
           navigate(`/scenes/${result?.data?.script_id}`);
         } else {
-          console.log(result, "result_check");
-          toast.error(
-            result?.data?.logline || "Something went wrong while generating!"
-          );
+          toast.error( result?.data?.logline || "Something went wrong while generating!");
         }
       } else {
         showToast?.error("Some Issue In Generating");
@@ -196,6 +191,8 @@ const GenerateScript = () => {
     "Write optimized React components.",
     "Write optimized React components.",
   ];
+
+  console.log(scriptText, "checkScriptText")
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa" }}>
@@ -405,7 +402,7 @@ const GenerateScript = () => {
                         !datasource
                           ? "Please select Data Source first"
                           : datasource === "openai"
-                          ? "OpenAI does not have any source"
+                          ? "Filter not available for openai!"
                           : ""
                       }
                       placement="left"

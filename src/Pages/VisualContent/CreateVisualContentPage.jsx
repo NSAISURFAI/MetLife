@@ -171,18 +171,12 @@ const CreateVisualContentPage = () => {
 
   const handleGenerate = async () => {
     const data = saveVisualContentData;
-    console.log(data?.prompts, "check_data")
-
     const payload = data?.prompts?.map(item => {
       return {
-        // scene_id: item.scene_id,
-        // scene_number: item.scene_number,
         prompt:item.visual_type === "image" ? item?.prompt
         : item.clip_visual_type === "clip" ? item.clip_prompt : null
       }
     })
-
-    console.log(payload, "check_data_before_send")
     dispatch(postGenerateVisualContentImage(data));
   };
 
@@ -190,9 +184,9 @@ const CreateVisualContentPage = () => {
     <>
       <div className={styles.container}>
         <OneFrameHeader />
-        {(saveVisualContentLoader || generateVisualLoader) && (
+        {/* {(saveVisualContentLoader || generateVisualLoader) && (
           <FullScreenGradientLoader text="loading..." />
-        )}
+        )} */}
         <div className={styles.header}>
           <h2 className={styles.title}>
             {saveVisualContentData?.title || "Visual Content"}
@@ -236,7 +230,7 @@ const CreateVisualContentPage = () => {
             </>
           ) : (
             <>
-              <NoDataMessage filter={false} />
+              <NoDataMessage filter={false} loading={saveVisualContentLoader} />
             </>
           )}
         </div>
