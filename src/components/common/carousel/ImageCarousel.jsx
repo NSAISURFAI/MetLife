@@ -3,6 +3,7 @@ import { Box, IconButton, Typography } from "@mui/material";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useSelector } from "react-redux";
+import dummy from "../../../assets/dummy-image.png";
 
 const ImageCarousel = ({ images = [], caroselIndex, previewImage }) => {
   const [index, setIndex] = useState(0);
@@ -24,13 +25,13 @@ const ImageCarousel = ({ images = [], caroselIndex, previewImage }) => {
 
     // caroselIndex(index);
     setLoading(true);
-  }, [images]);
+  }, [images, caroselIndex, index]);
 
   useEffect(() => {
     if (images.length > 0) {
       caroselIndex(index);
     }
-  }, [index]);
+  }, [index, caroselIndex, images?.length]);
 
   if (!images || images.length === 0) {
     return (
@@ -55,16 +56,24 @@ const ImageCarousel = ({ images = [], caroselIndex, previewImage }) => {
     );
   };
 
+  const handleError = (e) => {
+    e.target.src = dummy;
+  };
+  // console.log(images[index].url);
+
   return (
     <Box sx={{ textAlign: "center", mt: 1, position: "relative" }}>
-      <Typography variant="subtitle2" sx={{ mb: 1, fontSize:'18px', fontWeight: 500 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{ mb: 1, fontSize: "18px", fontWeight: 500 }}
+      >
         Images
       </Typography>
 
       <Box
         sx={{
-          width: 1200, // ✅ FIXED WIDTH (change as required)
-          height: "auto", // ✅ FIXED HEIGHT
+          width: "85vw",
+          height: "85vh", // ✅ FIXED HEIGHT
           margin: "0 auto",
           position: "relative",
           borderRadius: 2,
@@ -96,18 +105,21 @@ const ImageCarousel = ({ images = [], caroselIndex, previewImage }) => {
         </IconButton>
 
         {images[index]?.url && images.length > 0 ? (
-          <img
-            key={images[index].url}
-            src={images[index].url}
-            alt="carousel-img"
-            style={{
-              width: "100%",
-              maxHeight: "auto",
-              // objectFit: "cover",
-              borderRadius: 8,
-            }}
-            onLoad={() => setLoading(false)}
-          />
+          <>
+            <img
+              key={images[index].url}
+              src={images[index].url}
+              alt="carousel-img"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "fill",
+                borderRadius: 8,
+              }}
+              onLoad={() => setLoading(false)}
+              onError={handleError}
+            />
+          </>
         ) : (
           <Typography variant="body2" color="gray">
             Image not found

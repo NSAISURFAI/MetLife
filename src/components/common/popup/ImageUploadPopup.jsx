@@ -29,16 +29,18 @@ const ImageUploadPopup = ({
   const dispatch = useDispatch();
   const existingImages = fieldData?.image_uploaded_urls || [];
   const [currentIndex, setCurrentIndex] = useState(0);
-  console.log(fieldData, "fieldData")
+  console.log(previewUrl, "fieldData");
 
   useEffect(() => {
     if (open) {
       if (existingImages.length > 0) {
         setCurrentIndex(existingImages.length - 1); // show latest by default
-        setPreviewUrl(existingImages[existingImages.length - 1].url);
+        // setPreviewUrl(existingImages[existingImages.length - 1].url); 
       }
     }
-  }, [open, fieldData]);
+  }, [open, fieldData, existingImages]);
+
+
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -52,7 +54,7 @@ const ImageUploadPopup = ({
     const formData = new FormData();
     formData.append("script_id", script_id);
     formData.append("scene_id", scene_id);
-    formData.append("scene_number", scene_no); 
+    formData.append("scene_number", scene_no);
     formData.append("title", title);
     formData.append("prompt_batch_id", prompt_batch_id);
     formData.append("file", imageFile);
