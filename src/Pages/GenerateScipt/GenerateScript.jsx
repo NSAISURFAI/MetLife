@@ -175,7 +175,7 @@ const GenerateScript = () => {
           navigate(`/scenes/${result?.data?.script_id}`);
         } else {
           toast.error(
-            result?.data?.logline || "Something went wrong while generating!"
+            result?.data?.detail || "Something went wrong while generating!"
           );
         }
       } else {
