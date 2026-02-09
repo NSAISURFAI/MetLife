@@ -38,10 +38,10 @@ function PromptTable<T extends Record<string, any>>({
   actions = [],
 }: PromptTableProps<T>) {
   const { saveVisualContentLoader } = useSelector(
-    (store: RootState) => store.CreateVisualContent
+    (store: RootState) => store.CreateVisualContent,
   );
   const { generateVisualLoader } = useSelector(
-    (store: RootState) => store.GenerateVisualContent
+    (store: RootState) => store.GenerateVisualContent,
   );
 
   return (
@@ -54,7 +54,14 @@ function PromptTable<T extends Record<string, any>>({
           <TableHead>
             <TableRow>
               {columns.map((col, idx) => (
-                <TableCell key={idx} sx={{ fontWeight: 600 }}>
+                <TableCell
+                  key={idx}
+                  sx={{
+                    fontWeight: 600,
+                    width: col.width,
+                    maxWidth: col.width,
+                  }}
+                >
                   {col.label}
                 </TableCell>
               ))}
@@ -66,16 +73,38 @@ function PromptTable<T extends Record<string, any>>({
 
           <TableBody>
             {rows.map((row, rIdx) => (
-              <TableRow key={rIdx}>
+              <TableRow
+                key={rIdx}
+                sx={{
+                  "& td": {
+                    verticalAlign: "top", // 🔥 TOP ALIGN ALL CELLS
+                    wordBreak: "break-word",
+                    whiteSpace: "normal",
+                    paddingTop: "12px",
+                  },
+                }}
+              >
                 {columns.map((col, cIdx) => (
-                  <TableCell key={cIdx}>
+                  <TableCell
+                    key={cIdx}
+                    sx={{
+                      width: col.width,
+                      maxWidth: col.width,
+                    }}
+                  >
                     {col.render ? col.render(row[col.key], row) : row[col.key]}
                   </TableCell>
                 ))}
                 {actions.length > 0 && (
-                  <TableCell>
+                  <TableCell
+                    sx={{
+                      verticalAlign: "top",
+                      wordBreak: "break-word",
+                      whiteSpace: "normal",
+                    }}
+                  >
                     <div style={{ display: "flex", gap: 8 }}>
-                      {actions.map((act, aIdx) => (
+                      {/* {actions.map((act, aIdx) => (
                         <IconButton
                           key={aIdx}
                           size="small"
@@ -83,7 +112,26 @@ function PromptTable<T extends Record<string, any>>({
                         >
                           {act.icon}
                         </IconButton>
-                      ))}
+                      ))} */}
+
+                      {actions.map((act, aIdx) => {
+                        const Icon =
+                          typeof act.icon === "function"
+                            ? act.icon(row)
+                            : act.icon;
+
+                        if (!Icon) return null;
+
+                        return (
+                          <IconButton
+                            key={aIdx}
+                            size="small"
+                            onClick={() => act.onClick(row)}
+                          >
+                            {Icon}
+                          </IconButton>
+                        );
+                      })}
                     </div>
                   </TableCell>
                 )}

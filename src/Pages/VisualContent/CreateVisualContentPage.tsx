@@ -8,8 +8,15 @@ import FullScreenGradientLoader from "../../components/common/GradientLoader";
 import EditPromptPopup from "../../components/common/popup/EditPromptPopup";
 import RegeneratePromptPopup from "../../components/common/popup/RegeneratePromptPopup";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, MenuItem, Select, Tooltip } from "@mui/material";
-import type {SelectChangeEvent} from "@mui/material"
+import {
+  Box,
+  Button,
+  MenuItem,
+  Select,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material";
 import { useNavigate, useParams } from "react-router";
 import {
   getVisualContent,
@@ -18,8 +25,17 @@ import {
 import { NoDataMessage } from "../../components/common/NoDataMessage";
 import PromptTable from "../../components/common/PromptTable/PromptTable";
 import { postGenerateVisualContentImage } from "../../redux/features/generateVisualSlice";
-import { IoArrowBackCircleOutline } from "react-icons/io5";
+import {
+  IoArrowBackCircleOutline,
+  IoArrowForwardCircleOutline,
+} from "react-icons/io5";
 import type { AppDispatch, RootState } from "../../redux/store"; // adjust according to your setup
+import { postTranslatedDataSave } from "../../redux/features/saveSlice";
+import ButtonComp from "../../components/common/Buton/Button";
+import AutoFixHighIcon from "../../assets/wizardMagic.svg";
+import upload from "../../assets/upload_icon.svg";
+import VideoUploadPopup from "../../components/common/popup/VideoUploadPopup";
+import { toast } from "react-toastify";
 
 // ---------- Types ----------
 interface RowData {
@@ -30,6 +46,8 @@ interface RowData {
   prompt_id: string;
   prompt?: string;
   clip_prompt?: string;
+  requiresVideo: boolean;
+  video_uploaded?: boolean;
 }
 
 interface PopupData {
@@ -42,33 +60,54 @@ interface Column<T> {
   render?: (value: any, row: T) => React.ReactNode;
 }
 
-
 // ---------- Component ----------
 const CreateVisualContentPage: React.FC = () => {
- const columns: Column<RowData>[] = [
-  { label: "Scene No.", key: "Scene_No" },  // fixed key
-  {
-    label: "Visual Type",
-    key: "Visual_Type",
-    render: (value: RowData["Visual_Type"], row: RowData) => (
-      <Select
-        value={value}
-        size="small"
-        onChange={(e: SelectChangeEvent<string>) =>
-          handleVisualTypeChange(e.target.value, row)
+  const { saveVisualContentData, saveVisualContentLoader } = useSelector(
+    (store: RootState) => store.CreateVisualContent,
+  );
+  const columns: Column<RowData>[] = [
+    { label: "Scene No.", key: "Scene_No", width: "5%" },
+    {
+      label: "Visual Type",
+      key: "Visual_Type",
+      render: (value: RowData["Visual_Type"], row: RowData) => (
+        <Select
+          disabled={saveVisualContentData?.video_style === "conversational" || saveVisualContentData?.flow_type === "conversation"}
+          value={value}
+          size="small"
+          onChange={(e: SelectChangeEvent<string>) =>
+            handleVisualTypeChange(e.target.value, row)
+          }
+          sx={{ width: 110 }}
+        >
+          <MenuItem value="image">Image</MenuItem>
+          <MenuItem value="clip">Footage</MenuItem>
+        </Select>
+      ),
+    },
+    { label: "Scene Description", key: "Scene_Description", width: "30%" },
+    { label: "Visual Description", key: "Visual_Description", width: "50%" },
+  ];
+
+  const actions = [
+    // image upload for footage
+    {
+      icon: (row: RowData) =>
+        row.Visual_Type === "clip" ? (
+          <Tooltip title="Upload Footage" placement="top" arrow>
+            <span>
+              <img src={upload} />
+            </span>
+          </Tooltip>
+        ) : null,
+
+      onClick: (row: RowData) => {
+        if (row.Visual_Type === "clip") {
+          handleVideoUpload(row);
         }
-        sx={{ width: 120 }}
-      >
-        <MenuItem value="image">Image</MenuItem>
-        <MenuItem value="clip">Footage</MenuItem>
-      </Select>
-    ),
-  },
-  { label: "Visual Description", key: "Visual_Description" },
-];
+      },
+    },
 
-
-   const actions = [
     {
       icon: (
         <Tooltip title="Edit" palcement="top" arrow>
@@ -77,7 +116,7 @@ const CreateVisualContentPage: React.FC = () => {
           </span>
         </Tooltip>
       ),
-      onClick: (row : any) => {
+      onClick: (row: any) => {
         openEditPrompt(row);
       },
     },
@@ -89,7 +128,7 @@ const CreateVisualContentPage: React.FC = () => {
           </span>
         </Tooltip>
       ),
-      onClick: (row : any) => {
+      onClick: (row: any) => {
         handlePromptRegenerate(row);
       },
     },
@@ -99,19 +138,25 @@ const CreateVisualContentPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  const { saveVisualContentData, saveVisualContentLoader } = useSelector(
-    (store: RootState) => store.CreateVisualContent
+  const { saveLoader, saveTranslatedData } = useSelector(
+    (store: RootState) => store.SaveTranslatedData,
   );
-  
+
+  const { generateVisualContentData } = useSelector(
+    (store: RootState) => store.GenerateVisualContent,
+  );
+
+  console.log(generateVisualContentData?.visuals, "check_visual_content");
 
   const script_id = saveVisualContentData?.script_id;
-
   const [rows, setRows] = useState<RowData[]>([]);
   const [popup, setPopup] = useState<PopupData>({ type: null, data: null });
+  const visualExist = saveVisualContentData?.visual_exist;
 
   useEffect(() => {
-    if (!id) return;
-    dispatch(getVisualContent(id));
+    if (id) {
+      dispatch(getVisualContent(id));
+    }
   }, [id, dispatch]);
 
   useEffect(() => {
@@ -124,8 +169,11 @@ const CreateVisualContentPage: React.FC = () => {
     const newdata: RowData[] = reqData.map((item, index) => ({
       Scene_No: index + 1,
       Visual_Type: item?.clip_visual_type === "clip" ? "clip" : "image",
+      Scene_Description: item?.description ?? "-",
       Visual_Description:
-        item?.clip_visual_type === "clip" ? item?.clip_prompt ?? "-" : item?.prompt ?? "-",
+        item?.clip_visual_type === "clip"
+          ? (item?.clip_prompt ?? "-")
+          : (item?.prompt ?? "-"),
       scene_id: item?.scene_id ?? "",
       prompt_id: item?.prompt_id ?? "",
       prompt: item?.prompt ?? "",
@@ -138,24 +186,26 @@ const CreateVisualContentPage: React.FC = () => {
     setPopup({ type: "edit", data });
   };
 
+  const handleVideoUpload = (data: RowData) =>
+    setPopup({ type: "video_upload", data });
+
   const handlePromptRegenerate = (data: RowData) => {
     setPopup({ type: "regenerate", data });
   };
 
   const closePopup = () => setPopup({ type: null, data: null });
 
-const handleUpdate = (data: { fieldData: any | null; prompt: string }) => {
-  if (!data.fieldData) return; // extra safety
+  const handleUpdate = (data: { fieldData: any | null; prompt: string }) => {
+    if (!data.fieldData) return; // extra safety
 
-  const newData = rows.map((item) =>
-    item.scene_id === data.fieldData!.scene_id
-      ? { ...item, Visual_Description: data.prompt }
-      : item
-  );
+    const newData = rows.map((item) =>
+      item.scene_id === data.fieldData!.scene_id
+        ? { ...item, Visual_Description: data.prompt }
+        : item,
+    );
 
-  setRows(newData);
-};
-
+    setRows(newData);
+  };
 
   const handleVisualTypeChange = (value: string, data: RowData) => {
     const updatedRows = rows.map((item) =>
@@ -163,9 +213,14 @@ const handleUpdate = (data: { fieldData: any | null; prompt: string }) => {
         ? {
             ...item,
             Visual_Type: value,
-            Visual_Description: value === "image" ? data.prompt || "Generating..." : data.clip_prompt || "Generating...",
+            // requiresVideo: value === "clip",
+            // video_uploaded: value === "clip" ? item.video_uploaded : false,
+            Visual_Description:
+              value === "image"
+                ? data.prompt || "Generating..."
+                : data.clip_prompt || "Generating...",
           }
-        : item
+        : item,
     );
     setRows(updatedRows);
 
@@ -182,7 +237,10 @@ const handleUpdate = (data: { fieldData: any | null; prompt: string }) => {
   const handleGenerate = () => {
     const prompts = saveVisualContentData?.prompts ?? [];
     const manipulatedPrompts = prompts.map((item) => {
-      const obj = { ...item };
+      const obj = {
+        ...item,
+        scene_type: item?.scene_type ?? item?.scene_type,
+      };
       if (item.clip_visual_type === "clip") {
         delete obj?.prompt;
         delete obj.visual_type;
@@ -200,70 +258,138 @@ const handleUpdate = (data: { fieldData: any | null; prompt: string }) => {
       total_scenes: saveVisualContentData?.total_scenes,
       processed_scenes: saveVisualContentData?.processed_scenes,
       prompts: manipulatedPrompts,
+      video_style: saveVisualContentData?.video_style,
+      flow_type: saveVisualContentData?.flow_type,
     };
-
+    // console.log(finalPayload, "check_final_payload")
     dispatch(postGenerateVisualContentImage(finalPayload));
   };
 
+  const handleSave = () => {
+    const { title, ...rest } = saveVisualContentData;
+
+    const data = {
+      data: {
+        ...rest,
+        script_id: id,
+        title: title,
+        page: "prompt",
+      },
+      is_save_action: true,
+    };
+    dispatch(postTranslatedDataSave(data, id));
+  };
+
+  // const disableGenerate =
+  // generateVisualContentData?.visuals?.some((scene: any) => {
+  //   if (!Array.isArray(scene.videos)) return false;
+  //   return scene.status !== "uploaded" || scene.videos.length === 0;
+  // }) ?? false;
+
+  console.log(
+    saveVisualContentData?.video_style === "conversational",
+    "check__",
+  );
+
   return (
-    <div className={styles.container}>
-      <OneFrameHeader />
-
-      <div className={styles.tableContainer}>
-        {saveVisualContentData?.prompts?.length ? (
-          <>
-            <div className={styles.innerContainer}>
-              <div className={styles.header}>
-                <h2 className={styles.title}>
-                  {saveVisualContentData?.title || "Visual Content"}
-                </h2>
-                <Button
-                  className={styles.icon}
-                  onClick={() => navigate(`/scenes/${script_id}`)}
-                >
-                  <IoArrowBackCircleOutline size={30} /> Back
-                </Button>
+    <>
+      {saveLoader && <FullScreenGradientLoader text={"Loading..."} />}
+      <div className={styles.container}>
+        <OneFrameHeader />
+        <div className={styles.tableContainer}>
+          {saveVisualContentData?.prompts?.length ? (
+            <>
+              <div className={styles.innerContainer}>
+                <div className={styles.header}>
+                  <Typography variant="h4">
+                    {" "}
+                    {saveVisualContentData?.title || "Visual Content"}
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Button
+                      className={styles.icon}
+                      onClick={() => navigate(`/scenes/${script_id}`)}
+                    >
+                      <IoArrowBackCircleOutline size={30} /> Back
+                    </Button>
+                    <Button
+                      className={styles.icon}
+                      disabled={!visualExist}
+                      onClick={() =>
+                        navigate(`/generate-visual-page/${script_id}`)
+                      }
+                    >
+                      Next <IoArrowForwardCircleOutline size={30} />
+                    </Button>
+                  </Box>
+                </div>
               </div>
-            </div>
 
-            <PromptTable columns={columns} rows={rows} actions={actions} />
+              <PromptTable columns={columns} rows={rows} actions={actions} />
 
-            {popup.type === "edit" && popup.data && (
-              <EditPromptPopup
-                open={true}
-                onClose={closePopup}
-                fieldData={popup.data}
-                script_id={script_id}
-                handleUpdate={handleUpdate}
-              />
-            )}
+              {popup.type === "edit" && popup.data && (
+                <EditPromptPopup
+                  open={true}
+                  onClose={closePopup}
+                  fieldData={popup.data}
+                  script_id={script_id}
+                  handleUpdate={handleUpdate}
+                />
+              )}
 
-            {popup.type === "regenerate" && popup.data && (
-              <RegeneratePromptPopup
-                open={true}
-                onClose={closePopup}
-                fieldData={popup.data}
-                id={id!}
-              />
-            )}
+              {popup.type === "regenerate" && popup.data && (
+                <RegeneratePromptPopup
+                  open={true}
+                  onClose={closePopup}
+                  fieldData={popup.data}
+                  id={id!}
+                />
+              )}
 
-            <div className={styles.footerButtons}>
-              <Button
-                onClick={handleGenerate}
-                variant="contained"
-                className={styles.primaryBtn}
-              >
-                Generate Visual
-              </Button>
-            </div>
-          </>
-        ) : (
-          <NoDataMessage filter={false} loading={saveVisualContentLoader} />
-        )}
+              {popup.type === "video_upload" && (
+                <VideoUploadPopup
+                  open
+                  onClose={closePopup}
+                  fieldData={popup.data}
+                  script_id={saveVisualContentData?.script_id}
+                  prompt_batch_id={id}
+                  title={saveVisualContentData?.title}
+                />
+              )}
+
+              <div className={styles.footerButtons}>
+                <ButtonComp
+                  variant="outlined"
+                  colorType="secondary"
+                  // className={styles.largeOutline}
+                  onClick={handleSave}
+                  disabled={saveLoader}
+                >
+                  Save
+                </ButtonComp>
+                <ButtonComp
+                  onClick={handleGenerate}
+                  variant="contained"
+                  // className={styles.primaryBtn}
+                  disabled={saveTranslatedData === null}
+                  icon={AutoFixHighIcon}
+                >
+                  Generate Visual
+                </ButtonComp>
+              </div>
+            </>
+          ) : (
+            <NoDataMessage filter={false} loading={saveVisualContentLoader} />
+          )}
+        </div>
+        <Footer />
       </div>
-
-      <Footer />
-    </div>
+    </>
   );
 };
 

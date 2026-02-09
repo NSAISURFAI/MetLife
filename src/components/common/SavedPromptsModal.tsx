@@ -12,15 +12,23 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { showToast } from "../../utils/toast";
 import { NoDataMessage } from "./NoDataMessage";
 import { useSelector } from "react-redux";
+import type { PromptItem } from "../../utils/types";
+import type { RootState } from "../../redux/store";
+import ButtonComp from "./Buton/Button";
+
+interface SavedPromptsModalProps {
+  open: boolean;
+  prompts: PromptItem[];
+  onClose: (text: string) => void;
+}
 
 export default function SavedPromptsModal({
   open,
   onClose,
   prompts = [],
   size = "md", // "md" or "lg"
-}) {
-  const { promtLoader } = useSelector((store) => store.Prompts);
-  console.log(promtLoader, "promtLoader")
+}:SavedPromptsModalProps) {
+  const { promtLoader } = useSelector((store:RootState) => store.Prompts);
 
   const handleCopy = async (text) => {
     showToast.info("Prompt copied to clipboard!");
@@ -99,20 +107,20 @@ export default function SavedPromptsModal({
                     {prompt?.prompt}
                   </Typography>
 
-                  <Button
+                  <ButtonComp
                     variant="contained"
                     size="small"
                     onClick={() => handleCopy(prompt?.prompt)}
                     startIcon={<ContentCopyIcon />}
                     sx={{
-                      textTransform: "none",
-                      fontWeight: 600,
-                      borderRadius: 10,
-                      px: 2,
+                      // textTransform: "none",
+                      // fontWeight: 600,
+                      // borderRadius: 10,
+                      // px: 2,
                     }}
                   >
                     Use this prompt
-                  </Button>
+                  </ButtonComp>
                 </Paper>
               ))
             ) : (
@@ -125,17 +133,18 @@ export default function SavedPromptsModal({
 
         {/* Footer */}
         <Box textAlign="right" mt={3}>
-          <Button
+          <ButtonComp
             variant="outlined"
+            colorType="secondary"
             onClick={() => onClose()}
             sx={{
-              textTransform: "none",
-              borderRadius: 2,
-              px: 3,
+              // textTransform: "none",
+              // borderRadius: 2,
+              // px: 3,
             }}
           >
             Close
-          </Button>
+          </ButtonComp>
         </Box>
       </Box>
     </Modal>

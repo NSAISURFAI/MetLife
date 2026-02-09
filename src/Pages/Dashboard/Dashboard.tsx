@@ -1,5 +1,5 @@
 import Grid from "@mui/material/Grid";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -15,7 +15,8 @@ import {
   Chip,
 } from "@mui/material";
 import { PlayCircle, ErrorOutline, VideoLibrary } from "@mui/icons-material";
-import { FaRegPlayCircle } from "react-icons/fa";
+import { FaFileDownload, FaRegPlayCircle } from "react-icons/fa";
+import { FiEdit } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../redux/store";
@@ -23,6 +24,8 @@ import { getDashboardInfo } from "../../redux/features/dashBoardSlice";
 import { formatRelativeTime } from "../../utils";
 import FullScreenGradientLoader from "../../components/common/GradientLoader";
 import OneFrameHeader from "../../components/common/OneFrameHeader";
+import ButtonComp from "../../components/common/Buton/Button";
+import { UploadPopup } from "../../components/common/popup/UploadPopup";
 
 export interface DashboardStatus {
   failed?: boolean;
@@ -46,12 +49,17 @@ export interface DashboardItem {
   failed?: boolean;
 }
 
+type DashboardFilter = "ALL" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+
 const MyVideosDashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const [selectedFilter, setSelectedFilter] = useState<DashboardFilter>("ALL");
+  const [open, setOpen] = React.useState<null | HTMLElement>(null);
+  const openPopup = Boolean(open);
 
   const { dashBoardInfo, dashboardLoader } = useSelector(
-    (store: RootState) => store.DashBoard
+    (store: RootState) => store.DashBoard,
   );
 
   const completed_result = dashBoardInfo.filter((item) => {
@@ -88,26 +96,33 @@ const MyVideosDashboard: React.FC = () => {
       title: "Total Videos",
       value: dashBoardInfo?.length || 0,
       color: "#E3F2FD",
-      icon: <VideoLibrary fontSize="large" color="primary" />,
+      icon: <VideoLibrary fontSize="large" sx={{ color: "#1976D2" }} />,
       iconColor: "#1976D2",
+      filter: "ALL",
     },
     {
       title: "In Progress",
-      value: completed_result?.length,
-      color: "#E8F5E9",
-      icon: <FaRegPlayCircle size={35} color="#4CAF50" />,
+      value: total_progress,
+      color: "#FFF8E1",
+      icon: <FaRegPlayCircle size={35} color="#F9A825" />,
+      iconColor: "#F9A825",
+      filter: "IN_PROGRESS",
     },
     {
-      title: "Completed Scripts",
-      value: total_progress,
-      color: "#FFEBEE",
-      icon: <PlayCircle fontSize="large" color="error" />,
+      title: "Completed Videos",
+      value: completed_result?.length,
+      color: "#E8F5E9",
+      icon: <PlayCircle fontSize="large" sx={{ color: "#2E7D32" }} />,
+      iconColor: "#2E7D32",
+      filter: "COMPLETED",
     },
     {
       title: "Failed / Error",
       value: 0,
-      color: "#F3E5F5",
-      icon: <ErrorOutline fontSize="large" color="secondary" />,
+      color: "#FDECEA",
+      icon: <ErrorOutline fontSize="large" sx={{ color: "#D32F2F" }} />,
+      iconColor: "#D32F2F",
+      filter: "FAILED",
     },
   ];
 
@@ -119,7 +134,16 @@ const MyVideosDashboard: React.FC = () => {
 
     if (status.videos)
       return (
-        <Chip label="Completed" sx={{ bgcolor: "#4CAF50", color: "#fff" }} />
+        <Chip
+          label="Completed"
+          sx={{
+            bgcolor: "#ecfcf2",
+            fontWeight: "bold",
+            lineHeight: "normal",
+            color: "#057647",
+            border: "2px solid #aaefc6",
+          }}
+        />
       );
 
     if (status.audio && !status.videos)
@@ -133,8 +157,14 @@ const MyVideosDashboard: React.FC = () => {
     if (status.visuals)
       return (
         <Chip
-          label="Visuals Progress"
-          sx={{ bgcolor: "#9C27B0", color: "#fff" }}
+          label="Visuals in Progress"
+          sx={{
+            bgcolor: "#fdf1f9",
+            color: "#c01573",
+            fontWeight: "bold",
+            lineHeight: "normal",
+            border: "2px solid #fbceee",
+          }}
         />
       );
 
@@ -142,7 +172,13 @@ const MyVideosDashboard: React.FC = () => {
       return (
         <Chip
           label="Script Completed"
-          sx={{ bgcolor: "#FF9800", color: "#fff" }}
+          sx={{
+            bgcolor: "#edf3ff",
+            fontWeight: "bold",
+            lineHeight: "normal",
+            color: "#3537cc",
+            border: "2px solid #c6d7fe",
+          }}
         />
       );
 
@@ -184,160 +220,238 @@ const MyVideosDashboard: React.FC = () => {
       navigate(`/create-visual-content/${video.prompt_batch_id}`);
       return;
     }
-
     navigate(`/scenes/${video.script_id}`);
   };
 
+  const isCompleted = (item: DashboardItem) => !!item.videos;
+
+  const isInProgress = (item: DashboardItem) => {
+    if (item.audio && !item.videos) return true;
+    if (item.visuals && !item.videos && !item.audio) return true;
+    if (!item.visuals && !item.videos && !item.audio) return true;
+
+    return false;
+  };
+
+  const isFailed = (item: DashboardItem) => !!item.failed;
+
+  const filteredDashboardInfo = dashBoardInfo.filter((item) => {
+    switch (selectedFilter) {
+      case "COMPLETED":
+        return isCompleted(item);
+
+      case "IN_PROGRESS":
+        return isInProgress(item);
+
+      case "FAILED":
+        return isFailed(item);
+
+      default:
+        return true;
+    }
+  });
+
+  const handleDownloadMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setOpen(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setOpen(null);
+  };
+
   return (
-    <Box sx={{ bgcolor: "#f7f7f7", minHeight: "100vh" }}>
-      <OneFrameHeader />
-      {dashboardLoader && <FullScreenGradientLoader text="Loading..." />}
+    <>
+      <Box sx={{ bgcolor: "#f7f7f7", minHeight: "100vh" }}>
+        <OneFrameHeader />
+        {dashboardLoader && <FullScreenGradientLoader text="Loading..." />}
 
-      <Box sx={{ p: 4 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-          }}
-        >
-          <Typography variant="h4" fontWeight={600}>
-            My Videos Dashboard
-          </Typography>
-        </Box>
-
-        {/* ===================== STATISTICS ====================== */}
-        <Paper elevation={1} sx={{ p: 3, mb: 4, borderRadius: 3 }}>
-          <Typography variant="h6" fontWeight={600} mb={2}>
-            Statistics
-          </Typography>
-
-          <Grid
-            container
-            spacing={3}
+        <Box sx={{ p: 4 }}>
+          <Box
             sx={{
-              width: "100%",
-              m: 0,
-              flexWrap: "nowrap",
-              overflowX: "auto",
-              scrollbarWidth: "none",
-              "&::-webkit-scrollbar": { display: "none" },
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 3,
             }}
           >
-            {stats.map((s, idx) => (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={3}
-                key={idx}
-                sx={{
-                  flex: 1,
-                  minWidth: { xs: "200px", md: "auto" },
-                  cursor: "pointer",
-                }}
-              >
-                <Paper
-                  elevation={0}
+            <Typography variant="h4" fontWeight={600}>
+              My Videos Dashboard
+            </Typography>
+          </Box>
+
+          {/* ===================== STATISTICS ====================== */}
+          <Paper elevation={1} sx={{ p: 3, mb: 4, borderRadius: 3 }}>
+            <Typography variant="h6" fontWeight={600} mb={2}>
+              Statistics
+            </Typography>
+
+            <Grid
+              container
+              spacing={3}
+              sx={{
+                width: "100%",
+                m: 0,
+                paddingTop: "10px",
+                flexWrap: "nowrap",
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                "&::-webkit-scrollbar": { display: "none" },
+              }}
+            >
+              {stats.map((s, idx) => (
+                <Grid
+                  item
+                  xs={12}
+                  sm={6}
+                  md={3}
+                  key={idx}
                   sx={{
-                    p: 3,
-                    borderRadius: 4,
-                    bgcolor: s.color,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    transition: "0.3s",
+                    flex: 1,
+                    minWidth: { xs: "200px", md: "auto" },
+                    cursor: "pointer",
                   }}
                 >
-                  <Box
+                  <Paper
+                    elevation={selectedFilter === s.filter ? 6 : 0}
+                    onClick={() => setSelectedFilter(s.filter)}
                     sx={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: "50%",
-                      bgcolor: "#fff",
+                      p: 3,
+                      borderRadius: 4,
+                      bgcolor: s.color,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
+                      justifyContent: "space-between",
+                      cursor: "pointer",
+                      boxShadow: "none",
+                      border:
+                        selectedFilter === s.filter
+                          ? "2px solid #1976D2"
+                          : "2px solid transparent",
+                      transition: "0.3s",
+                      "&:hover": {
+                        transform: "translateY(-3px)",
+                      },
                     }}
                   >
-                    {s.icon}
-                  </Box>
+                    <Box
+                      sx={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: "50%",
+                        bgcolor: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {s.icon}
+                    </Box>
 
-                  <Box sx={{ textAlign: "right" }}>
-                    <Typography variant="h5" fontWeight={700}>
-                      {s.value}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {s.title}
-                    </Typography>
-                  </Box>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Paper>
-
-        {/* ===================== VIDEO LIST ====================== */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-          <Typography variant="h6" fontWeight={600}>
-            Video List
-          </Typography>
-
-          <Button
-            variant="contained"
-            sx={{
-              bgcolor: "#29B6F6",
-              textTransform: "none",
-              borderRadius: "8px",
-            }}
-            onClick={handleClick}
-          >
-            + Create New Video
-          </Button>
-        </Box>
-
-        <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: "#E3F2FD" }}>
-                <TableCell>Thumbnail</TableCell>
-                <TableCell>Video Name</TableCell>
-                <TableCell>Duration</TableCell>
-                <TableCell>Last Update</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Action</TableCell>
-              </TableRow>
-            </TableHead>
-
-            <TableBody>
-              {dashBoardInfo.map((video: any, i: number) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <Avatar
-                      src={video.thumbnail}
-                      variant="rounded"
-                      sx={{ width: 60, height: 60 }}
-                    />
-                  </TableCell>
-                  <TableCell>{`${
-                    video.language === null
-                      ? ""
-                      : video.language.slice(0, 2) + "_"
-                  }${video.title}`}</TableCell>
-                  <TableCell>{video.suggested_duration_minutes}</TableCell>
-                  <TableCell>{formatRelativeTime(video.created_at)}</TableCell>
-                  <TableCell>{getStatusChip(video)}</TableCell>
-                  <TableCell align="center">
-                    <Button onClick={() => handleView(video)}>👁️</Button>
-                  </TableCell>
-                </TableRow>
+                    <Box sx={{ textAlign: "right" }}>
+                      <Typography variant="h5">{s.value}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {s.title}
+                      </Typography>
+                    </Box>
+                  </Paper>
+                </Grid>
               ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+            </Grid>
+          </Paper>
+
+          {/* ===================== VIDEO LIST ====================== */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+            <Typography variant="h6">Video List</Typography>
+
+            <ButtonComp
+              variant="contained"
+              colorType="secondary"
+              label="+ Create New Video"
+              transform="none"
+              sx={
+                {
+                  // bgcolor: "#2f91c7",
+                  // borderRadius: "8px",
+                }
+              }
+              onClick={handleClick}
+            >
+              {" "}
+              + Create New Video
+            </ButtonComp>
+          </Box>
+
+          <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: "#E3F2FD" }}>
+                  <TableCell>S.No</TableCell>
+                  {/* <TableCell>Thumbnail</TableCell> */}
+                  <TableCell>Video Name</TableCell>
+                  <TableCell>Language</TableCell>
+
+                  <TableCell>Duration</TableCell>
+                  <TableCell>Last Update</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="center">Action</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {filteredDashboardInfo.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      <Typography
+                        variant="body1"
+                        sx={{ py: 4, color: "text.secondary", fontWeight: 500 }}
+                      >
+                        Data not available
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredDashboardInfo.map((video, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{i + 1}</TableCell>
+
+                      <TableCell>
+                        {/* ${
+                          video.language ? "_" + video.language.slice(0, 2) : ""
+                        } */}
+                        {`${video.title}
+                        `}
+                      </TableCell>
+                      <TableCell>{video?.language}</TableCell>
+
+                      <TableCell>{video?.suggested_duration_minutes}</TableCell>
+
+                      <TableCell>
+                        {formatRelativeTime(video?.created_at)}
+                      </TableCell>
+
+                      <TableCell>{getStatusChip(video)}</TableCell>
+
+                      <TableCell align="center">
+                        <Button onClick={() => handleView(video)}>👁️</Button>
+                        {/* <Button onClick={handleDownloadMenu}>
+                          <FaFileDownload size={18} />
+                        </Button> */}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* <UploadPopup
+            open={open}
+            openPopup={openPopup}
+            handleCloseMenu={handleCloseMenu}
+          /> */}
+        </Box>
       </Box>
-    </Box>
+    </>
   );
 };
 

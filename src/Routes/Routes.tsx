@@ -12,7 +12,7 @@ import UploadScript from "../Pages/UploadScriptPage/UploadScript";
 import TranslatedScript from "../Pages/TrannslatedScript/TranslatedScript";
 import GenerateScript from "../Pages/GenerateScipt/GenerateScript";
 import VideoProgressPage from "../Pages/VedioPregressPage/VedioProgressvideo";
-import UploadClipsPage from "../Pages/UploadVedioPage/UploadVideoPage";
+// import UploadClipsPage from "../Pages/UploadVedioPage/UploadVideoPage";
 import ScriptPage from "../Pages/AddNewScriptPage/AddNewScriptPage";
 import { getToken, getLoggedInUserType, USERS } from "../utils";
 import Layout from "../components/layout/Layout";
@@ -22,6 +22,8 @@ import GenerateVisualContentPage from "../Pages/VisualContent/GenerateVisualCont
 import AudioAnimationPage from "../Pages/AudioAnimation/AudioAnimationPage";
 import AnimationPage from "../Pages/Animation/AnimationPage";
 import UploadConversationalClipsPage from "../Pages/UploadConversation/UploadConversationClipsPage";
+import UploadVideoPage from "../Pages/UploadVideoPage/UploadVideoPage";
+
 
 // ===============================
 interface ProtectedRouteProps {
@@ -29,12 +31,32 @@ interface ProtectedRouteProps {
   allowedRoles?: string[];
 }
 
+// const ProtectedRoute = ({
+//   element,
+//   allowedRoles = [],
+// }: ProtectedRouteProps) => {
+//   const token = getToken();
+//   const userType = getLoggedInUserType();
+
+//   return element;
+// };
+
 const ProtectedRoute = ({
   element,
   allowedRoles = [],
 }: ProtectedRouteProps) => {
   const token = getToken();
-  const userType = getLoggedInUserType();
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles.length > 0) {
+    const userType = getLoggedInUserType();
+    if (!allowedRoles.includes(userType)) {
+      return <Navigate to="/login" replace />;
+    }
+  }
 
   return element;
 };
@@ -43,12 +65,22 @@ interface AuthorizationProps {
   element: ReactElement;
 }
 
+// const Authorization = ({ element }: AuthorizationProps) => {
+//   const token = getToken();
+
+//   // if (token) {
+//   //   return <Navigate to="/" replace />;
+//   // }
+
+//   return element;
+// };
+
 const Authorization = ({ element }: AuthorizationProps) => {
   const token = getToken();
 
-  // if (token) {
-  //   return <Navigate to="/" replace />;
-  // }
+  if (token) {
+    return <Navigate to="/video-frame" replace />;
+  }
 
   return element;
 };
@@ -57,7 +89,7 @@ const Authorization = ({ element }: AuthorizationProps) => {
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/video-frame" replace />,
   },
   {
     path: "/login",
@@ -76,7 +108,8 @@ export const router = createBrowserRouter([
     element: <Authorization element={<ForgotPassword />} />,
   },
   {
-    element: <Layout />,
+    // element: <Layout />,
+    element: <ProtectedRoute element={<Layout />} />,
     children: [
       {
         path: "/dashboard",
@@ -85,6 +118,10 @@ export const router = createBrowserRouter([
       {
         path: "/video-frame",
         element: <VideoCreationOptions />,
+      },
+      {
+        path: "/upload-video",
+        element: <UploadVideoPage />,
       },
       {
         path: "/upload-script",
@@ -122,10 +159,10 @@ export const router = createBrowserRouter([
         path: "/upload-conversational-clips/:id",
         element: <UploadConversationalClipsPage />,
       },
-      {
-        path: "upload-generated-clips",
-        element: <UploadClipsPage />,
-      },
+      // {
+      //   path: "upload-generated-clips",
+      //   element: <UploadClipsPage />,
+      // },
       {
         path: "scenes/:id",
         element: <ScriptPage />,

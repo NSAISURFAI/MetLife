@@ -6,10 +6,12 @@ import {
   DialogActions,
   Button,
   TextField,
+  Typography,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { postEditVisualContent } from "../../../redux/features/createVisualSlice";
 import type { RootState } from "../../../redux/store";
+import ButtonComp from "../Buton/Button";
 
 interface FieldData {
   scene_id: string | number;
@@ -38,6 +40,7 @@ const EditPromptPopup: React.FC<EditPromptPopupProps> = ({
   );
 
   const [description, setDescription] = useState("");
+  console.log(fieldData, "check__")
 
   // Load initial description when modal opens
   useEffect(() => {
@@ -53,8 +56,9 @@ const EditPromptPopup: React.FC<EditPromptPopupProps> = ({
 
     const payload = {
       script_id,
-      prompt: description,
+      value: description,
       scene_id: fieldData.scene_id,
+      prompt_type: fieldData?.Visual_Type === "clip" ? "clip_prompt" : "prompt",
     };
 
     dispatch(postEditVisualContent(payload, onClose));
@@ -93,21 +97,22 @@ const EditPromptPopup: React.FC<EditPromptPopupProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button
+        <ButtonComp
           onClick={onClose}
+          colorType="secondary"
           variant="outlined"
           disabled={saveVisualContentLoader}
         >
           Cancel
-        </Button>
+        </ButtonComp>
 
-        <Button
+        <ButtonComp
           variant="contained"
           onClick={handleSave}
           disabled={saveVisualContentLoader}
         >
           Save
-        </Button>
+        </ButtonComp>
       </DialogActions>
     </Dialog>
   );

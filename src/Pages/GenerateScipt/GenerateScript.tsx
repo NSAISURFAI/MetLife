@@ -11,10 +11,10 @@ import {
   AccordionDetails,
   Typography,
   Grid,
-  Button,
+  // Button,
   Tooltip,
 } from "@mui/material";
-import { IoArrowBackCircleOutline } from "react-icons/io5";
+// import { IoArrowBackCircleOutline } from "react-icons/io5";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { getPromptsList } from "../../redux/features/promptSlice";
@@ -29,6 +29,9 @@ import Input from "../../components/common/Input";
 import type { RootState } from "../../redux/store"; // import your store type
 import { showToast } from "../../utils/toast";
 import CharacterParent from "../../components/Conversationaly_Character/CharacterParent";
+import AutoFixHighIcon from "../../assets/wizardMagic.svg";
+import type { CharacterType, PromptItem } from "../../utils/types";
+import BackButton from "../../components/common/Buton/BackButton";
 
 // ---------- Options ----------
 const videoTypeOptions = [
@@ -41,6 +44,12 @@ const videoTypeOptions = [
 const languageOptions = [
   { value: "English", label: "English" },
   { value: "Spanish", label: "Spanish" },
+  { value: "Romanian", label: "Romanian" },
+  { value: "Ukranian", label: "Ukranian" },
+  { value: "Bangla", label: "Bangla" },
+  { value: "Portugese", label: "Portugese" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Nepali", label: "Nepali" },
 ];
 
 const toneOptions = [
@@ -97,23 +106,26 @@ interface VideoPrompt {
   title: string;
   script: string;
 }
+
 export type InputType = "prompt" | "image";
 
-export interface CharacterType {
-  name: string;
-  role: string;
-  prompt: string;
-  img: string;
-  inputType: InputType;
-}
+/* ================= CONSTANT ================= */
 
-// ---------- Empty Character ----------
-const emptyCharacter: CharacterType = {
+export const emptyCharacter: CharacterType = {
   name: "",
   role: "",
-  prompt: "",
   img: "",
   inputType: "prompt",
+  age: 30,
+  gender: "",
+  skin_tone: "Light-medium",
+  hair: "Short, neatly combed black hair",
+  face: "Clean-shaven, calm professional expression",
+  build: "Average",
+  wardrobe: "Light blue dress shirt, navy blazer, no tie",
+  accessories: "Simple watch, no flashy items",
+  personality: "Curious, thoughtful, professional",
+  origin: "Spanish / Latin America",
 };
 // ---------- Component ----------
 const GenerateScript: React.FC = () => {
@@ -122,7 +134,6 @@ const GenerateScript: React.FC = () => {
   const [characters, setCharacters] = useState<CharacterType[]>([
     emptyCharacter,
   ]);
-  console.log(characters, "characters");
   // States
   const [scriptText, setScriptText] = useState<string>("");
   const [data_filters, setDataFilters] = useState<DataFiltersType>({
@@ -155,7 +166,7 @@ const GenerateScript: React.FC = () => {
   const isMetlife = datasource === "metlife" || datasource === "metlife+openai";
 
   const { promptData, promtLoader } = useSelector(
-    (store: RootState) => store.Prompts
+    (store: RootState) => store.Prompts,
   );
 
   // Fetch prompts list
@@ -173,7 +184,7 @@ const GenerateScript: React.FC = () => {
 
   // ---------- Handlers ----------
   const handleInputChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     switch (name) {
@@ -191,36 +202,9 @@ const GenerateScript: React.FC = () => {
     }
   };
 
-  const handleGenerate = () => {
-    if (!language) showToast.error("Please select Language in Video Filters");
-    else if (!videoType)
-      showToast.error("Please select Video Type in Video Filters");
-    else if (!audience)
-      showToast.error("Please enter Target Audience in Video Filters");
-    else if (!duration)
-      showToast.error("Please select Duration in Video Filters");
-    else if (!model) showToast.error("Please select Model in Model Filters");
-    else if (!datasource)
-      showToast.error("Please select Data Source in Model Filters");
-    else if (!title) showToast.error("Please give title!");
-    else apiCall();
-  };
-
-  const buildCharacterPayload = (characters) => {
-    console.log(characters, "check_characters");
-    return {
-      character_names: characters.map((c) => c.name || ""),
-      roles: characters.map((c) => c.role || ""),
-      character_descriptions: characters.map((c) => c.prompt || ""),
-      image_upload: characters.map((_) => false),
-    };
-  };
-  console.log(characters, "characters");
-
-  const apiCall = async () => {
-    setLoader(true);
+  const apiCall = async (success) => {
     const characterPayload = buildCharacterPayload(characters);
-
+    // console.log("Character Payload:", characterPayload);
     const new_payload: any = {
       title,
       brief: scriptText,
@@ -232,13 +216,11 @@ const GenerateScript: React.FC = () => {
       top_n: Number(topn),
       data_source: datasource,
       filters: data_filters,
-      ...characterPayload,
+      characters: characterPayload.characters,
     };
 
-    console.log(new_payload, "check_payload");
-
     if (datasource === "openai") delete new_payload.top_n;
-
+    setLoader(true);
     try {
       const result = await api.post("generate-script", new_payload);
       if (result?.status === 200) {
@@ -246,9 +228,12 @@ const GenerateScript: React.FC = () => {
           toast.success("Script generated successfully!");
           navigate(`/scenes/${result?.data?.script_id}`);
         } else {
-          toast.error(
-            result?.data?.detail || "Something went wrong while generating!"
-          );
+          toast.error(result?.data?.detail || "Insufficient Internal Data!");
+        }
+
+        if (success) {
+          // console.log(result?.data?.script_id, "check");
+          successCallback(result?.data?.script_id);
         }
       } else {
         showToast.error("Some Issue In Generating");
@@ -261,6 +246,127 @@ const GenerateScript: React.FC = () => {
     }
   };
 
+  const handleGenerate = () => {
+    if (!language) showToast.error("Please select Language in Video Filters");
+    else if (!videoType)
+      showToast.error("Please select Video Type in Video Filters");
+    else if (!audience)
+      showToast.error("Please enter Target Audience in Video Filters");
+    else if (!duration)
+      showToast.error("Please select Duration in Video Filters");
+    else if (!model) showToast.error("Please select Model in Model Filters");
+    else if (!datasource)
+      showToast.error("Please select Data Source in Model Filters");
+    else if (!title) showToast.error("Please give title!");
+    else if (videoType === "conversational" || videoType === "mixed") {
+      const validCharacters = characters.filter((char) => {
+        const hasBasicInfo = char.name.trim() && char.role.trim();
+        const hasValidInput =
+          char.inputType === "image"
+            ? !!char.img
+            : Boolean(
+                char.age ||
+                char.gender ||
+                char.skin_tone ||
+                char.hair ||
+                char.face ||
+                char.build ||
+                char.wardrobe ||
+                char.accessories ||
+                char.personality ||
+                char.origin,
+              );
+
+        return Boolean(hasBasicInfo && hasValidInput);
+      });
+      if (validCharacters.length === 0) {
+        showToast.error("Please add at least one valid character!");
+        return;
+      } else {
+        apiCall(successCallback);
+      }
+    } else apiCall(successCallback);
+  };
+
+  const successCallback = async (id: string) => {
+    try {
+      setLoader(true);
+      const imageCharacters = characters.filter(
+        (c) => c.inputType === "image" && c.img,
+      );
+
+      for (const char of imageCharacters) {
+        const formData = new FormData();
+        // formData.append("script_id", id);
+        // formData.append("character_name", char.name);
+        formData.append("file", char.img);
+
+        await api.post("characters/upload-character-image", formData, {
+          params: {
+            script_id: id,
+            character_name: char.name,
+            role: char.role,
+          },
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoader(false);
+    }
+  };
+  // const buildCharacterPayload = (characters: CharacterType[] = []) => {
+  //   return {
+  //     characters: characters?.map((c: CharacterType) => ({
+  //       name: c.name || "",
+  //       role: c.role || "",
+  //       gender: c.gender || "",
+  //       age: String(c.age || ""),
+  //       skin_tone: c.skin_tone || "",
+  //       hair: c.hair || "",
+  //       face: c.face || "",
+  //       build: c.build || "",
+  //       wardrobe: c.wardrobe || "",
+  //       accessories: c.accessories || "",
+  //       personality: c.personality || "",
+  //       origin: c.origin || "",
+  //       image_upload: c.img ? true : false,
+  //     })),
+  //   };
+  // };
+
+  const buildCharacterPayload = (characters: CharacterType[] = []) => {
+    return {
+      characters: characters.map((c: CharacterType) => {
+        if (c.inputType === "image") {
+          return {
+            name: c.name || "",
+            role: c.role || "",
+            file: c.img,
+          };
+        }
+
+        return {
+          name: c.name || "",
+          role: c.role || "",
+          gender: c.gender || "",
+          age: String(c.age || ""),
+          skin_tone: c.skin_tone || "",
+          hair: c.hair || "",
+          face: c.face || "",
+          build: c.build || "",
+          wardrobe: c.wardrobe || "",
+          accessories: c.accessories || "",
+          personality: c.personality || "",
+          origin: c.origin || "",
+        };
+      }),
+    };
+  };
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa" }}>
       <OneFrameHeader />
@@ -268,15 +374,25 @@ const GenerateScript: React.FC = () => {
       <main className={styles.cardWrap}>
         <div className={styles.card}>
           <div className={styles.headerRow}>
-            {" "}
-            <h1 className={styles.title}>Generate Script</h1>{" "}
-            <Button
+            {/* <Button
               className={styles.icon}
               onClick={() => navigate("/video-frame")}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                paddingX: 0,
+              }}
             >
-              {" "}
-              <IoArrowBackCircleOutline size={30} /> Back{" "}
-            </Button>{" "}
+              <IoArrowBackCircleOutline size={30} />
+              <span style={{ lineHeight: "normal" }}>Back</span>
+            </Button> */}
+
+            {/* <h1 className={styles.title}>Generate Script</h1> */}
+            <BackButton route="/video-frame" />
+            <Typography variant="h4" my={1}>
+              Generate Script
+            </Typography>
           </div>
           <div>
             <Input
@@ -300,6 +416,15 @@ const GenerateScript: React.FC = () => {
             />
 
             {/* <img src={path} alt="Bookmark" className={styles.bookmarkIcon} /> */}
+            {/* <button
+              className={styles.savedBtn}
+              onClick={() => {
+                setOpen(true);
+              }}
+            >
+              Saved Prompts
+            </button> */}
+
             <button
               className={styles.savedBtn}
               onClick={() => {
@@ -317,12 +442,12 @@ const GenerateScript: React.FC = () => {
                 borderRadius: "10px",
                 boxShadow: "none",
                 "&::before": {
-                  display: "none", // removes divider line
+                  display: "none",
                 },
               }}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography className={styles.accordionTitle}>
+                <Typography variant="body1" className={styles.accordionTitle}>
                   Video Filters
                 </Typography>
               </AccordionSummary>
@@ -388,7 +513,7 @@ const GenerateScript: React.FC = () => {
               }}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography className={styles.accordionTitle}>
+                <Typography variant="body1" className={styles.accordionTitle}>
                   Model Filters
                 </Typography>
               </AccordionSummary>
@@ -418,8 +543,8 @@ const GenerateScript: React.FC = () => {
                         !datasource
                           ? "Please select Data Source first"
                           : datasource === "openai"
-                          ? "Filter not available for openai!"
-                          : ""
+                            ? "Filter not available for openai!"
+                            : ""
                       }
                       placement="left"
                       arrow
@@ -430,7 +555,8 @@ const GenerateScript: React.FC = () => {
                           label="Top N"
                           options={topNOptions}
                           value={topn}
-                          onChange={setTopn}
+                          // onChange={setTopn}
+                          onChange={(value) => setTopn(value.toString())}
                           placeholder="Select Top N"
                           disabled={disableTopN}
                         />
@@ -452,7 +578,7 @@ const GenerateScript: React.FC = () => {
               }}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography className={styles.accordionTitle}>
+                <Typography variant="body1" className={styles.accordionTitle}>
                   Data Filters
                 </Typography>
               </AccordionSummary>
@@ -482,10 +608,13 @@ const GenerateScript: React.FC = () => {
             <div className={styles.actions}>
               <ButtonComp
                 disabled={loader}
+                icon={AutoFixHighIcon}
                 label={loader ? "Generating..." : "Generate Script"}
-                className={styles.generateBtn}
+                // className={styles.generateBtn}
                 action={handleGenerate}
-              />
+              >
+                {loader ? "Generating..." : "Generate Script"}
+              </ButtonComp>
             </div>
           </div>
         </div>

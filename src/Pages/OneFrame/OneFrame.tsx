@@ -1,5 +1,5 @@
-import React from "react";
-import { Typography, Box, Grid } from "@mui/material";
+import React, { useState } from "react";
+import { Typography, Box, Grid, Button, MenuItem, Menu } from "@mui/material";
 import UploadIcon from "../../assets/UploadCloudIcon.svg";
 import AutoFixHighIcon from "../../assets/wizardMagic.svg";
 import ButtonComp from "../../components/common/Buton/Button";
@@ -7,6 +7,8 @@ import styles from "./OneFrame.module.css";
 import OneFrameHeader from "../../components/common/OneFrameHeader";
 import { useNavigate } from "react-router";
 import Footer from "../../components/common/mainFooter";
+import { IoArrowBackCircleOutline } from "react-icons/io5";
+import { UploadPopup } from "../../components/common/popup/UploadPopup";
 
 // If needed for importing SVGs
 // declare module "*.svg" {
@@ -16,6 +18,16 @@ import Footer from "../../components/common/mainFooter";
 
 const VideoCreationOptions: React.FC = () => {
   const navigate = useNavigate();
+  const [open, setOpen] = React.useState<null | HTMLElement>(null);
+  const openPopup = Boolean(open);
+
+  const handleOpenMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setOpen(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setOpen(null);
+  };
 
   return (
     <>
@@ -37,10 +49,15 @@ const VideoCreationOptions: React.FC = () => {
             justifyContent: "center",
             alignItems: "center",
             px: 2,
+            gap: "40px",
             textAlign: "center",
           }}
         >
-          <p className={styles.upperHeading}>Create Your Video with OneFrame</p>
+          {/* <p className={styles.upperHeading}>Create Your Video with OneFrame</p> */}
+
+          <Typography variant="h3"> Create Your Video with OneFrame
+            
+          </Typography>
 
           <Grid
             container
@@ -49,31 +66,6 @@ const VideoCreationOptions: React.FC = () => {
             alignItems="stretch"
             sx={{ maxWidth: 1000, width: "100%" }}
           >
-            {/* Upload Script Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <div className={styles.beigeCard}>
-                <div className={styles.completeBoxData}>
-                  <Typography variant="h6" className={styles.boxHeading}>
-                    Upload a Script
-                  </Typography>
-
-                  <Typography className={styles.boxText}>
-                    Already have a script? Upload a .pdf file to get started.
-                  </Typography>
-
-                  <div className={styles.parentContainer}>
-                    <ButtonComp
-                      label="Upload a Script"
-                      sx={styles.Button}
-                      icon={UploadIcon}
-                      variant="contained"
-                      action={() => navigate("/upload-script")}
-                    />
-                  </div>
-                </div>
-              </div>
-            </Grid>
-
             {/* Generate Script Card */}
             <Grid item xs={12} sm={6} md={4}>
               <div className={styles.beigeCard}>
@@ -82,7 +74,7 @@ const VideoCreationOptions: React.FC = () => {
                     Generate a Script
                   </Typography>
 
-                  <Typography className={styles.boxText}>
+                  <Typography variant = "body1" className={styles.boxText}>
                     Describe your video idea, and our AI will write the perfect
                     script for you.
                   </Typography>
@@ -90,10 +82,50 @@ const VideoCreationOptions: React.FC = () => {
                   <div className={styles.parentContainer}>
                     <ButtonComp
                       label="Generate a Script"
-                      sx={styles.Button}
+                      // sx={styles.Button}
                       icon={AutoFixHighIcon}
                       variant="contained"
                       action={() => navigate("/generate-script")}
+                    >
+                      Generate a Script
+                    </ButtonComp>
+                  </div>
+                </div>
+              </div>
+            </Grid>
+
+            {/* Upload Script Card */}
+            <Grid item xs={12} sm={6} md={4}>
+              <div className={styles.beigeCard}>
+                <div className={styles.completeBoxData}>
+                  <Typography variant="h6" className={styles.boxHeading}>
+                    {/* Upload a Script
+                     */}
+                    Localization
+                  </Typography>
+
+                  <Typography  variant = "body1" className={styles.boxText}>
+                    Already have a script? Upload a .pdf file or video to get
+                    started.
+                  </Typography>
+
+                  <div className={styles.parentContainer}>
+                    <ButtonComp
+                      // label="Upload a Script"
+                      label="Localization"
+                      // sx={styles.Button}
+                      icon={UploadIcon}
+                      variant="contained"
+                      // action={() => navigate("/upload-script")}
+                      action={handleOpenMenu}
+                    >
+                      Localization
+                    </ButtonComp>
+
+                    <UploadPopup
+                      open={open}
+                      openPopup={openPopup}
+                      handleCloseMenu={handleCloseMenu}
                     />
                   </div>
                 </div>

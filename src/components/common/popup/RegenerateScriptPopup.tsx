@@ -68,6 +68,7 @@ const RegenerateScriptPopup = ({
       feedback,
       top_n: topn,
       model: model,
+      source_version: tableData?.version,
     };
     if (!topn) {
       delete new_payload.top_n;
@@ -96,7 +97,6 @@ const RegenerateScriptPopup = ({
       }
     } catch (err) {
       showToast?.error("Some Issue In Re-Generating");
-
       console.error("Video creation failed:", err);
     } finally {
       setLoader(false);
@@ -236,15 +236,16 @@ const RegenerateScriptPopup = ({
             disabled={loader}
             label={loader ? "Submitting" : "Submit"}
             variant="contained"
-            sx={{
-              backgroundColor: "#1976d2",
-              "&:hover": { backgroundColor: "#b2d1f0ff" },
-            }}
+            // sx={{
+            //   backgroundColor: "#1976d2",
+            //   "&:hover": { backgroundColor: "#b2d1f0ff" },
+            // }}
             action={handleRegenerate}
           />
-          <Button onClick={onCloseFun} color="inherit" variant="outlined">
+
+          <ButtonComp onClick={onCloseFun} color="inherit" variant="outlined" colorType="secondary">
             Cancel
-          </Button>
+          </ButtonComp>
         </DialogActions>
       </Dialog>
     </>

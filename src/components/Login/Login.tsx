@@ -1,136 +1,258 @@
 import React, { useState } from "react";
-import styles from "./Login.module.css";
-import axios from "../../api/axios";
-import Input from '../common/Input'
-import { useNavigate } from "react-router";
+import {
+  Box,
+  Grid,
+  TextField,
+  Typography,
+  Button,
+  IconButton,
+  InputAdornment,
+} from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import oneFrame from "../../assets/OneFrame.png";
+import unnamed from "../../assets/updatedLogo.png";
+import mailIcon from "../../assets/mail-account.svg";
+import { useDispatch, useSelector } from "react-redux";
+import { postAuthLogin } from "../../redux/auth/authSlice";
+import type { RootState } from "../../redux/store";
+import FullScreenGradientLoader from "../common/GradientLoader";
+import { navigateTo } from "../../utils/navigate";
+import ButtonComp from "../common/Buton/Button";
+// import rightImg from "../../assets/login-right.png";
+// import serfAilogo from "../../assets/serfAi-logo.jpg";
 
-const Login = () => {
-      const navigate = useNavigate();
-     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        username: "",
-        password: ""
-    });
+/* ---------------- Types ---------------- */
 
-    const [errors, setErrors] = useState({});
+interface FormData {
+  email: string;
+  password: string;
+}
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
+interface FormErrors {
+  email?: string;
+  password?: string;
+}
 
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+/* ---------------- Component ---------------- */
 
-        // Clear errors on input change
-        setErrors(prev => ({
-            ...prev,
-            [name]: ""
-        }));
-    };
+const Login: React.FC = () => {
+  const dispatch = useDispatch();
+  const { userInfo, authLoader } = useSelector(
+    (store: RootState) => store.Auth
+  );
 
-    const validate = () => {
-        const newErrors = {};
+  const [formData, setFormData] = useState<FormData>({
+    email: "",
+    password: "",
+  });
 
-        if (!formData.username.trim()) {
-            newErrors.username = "Username is required";
-        }
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
-        if (!formData.password.trim()) {
-            newErrors.password = "Password is required";
-        } else if (formData.password.length < 6) {
-            newErrors.password = "Password must be at least 6 characters";
-        }
+  /* ---------------- Handlers ---------------- */
 
-        return newErrors;
-    };
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
 
-    const handleSubmit = async(e) => {
-        e.preventDefault();
-        const validationErrors = validate();
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
 
-        if (Object.keys(validationErrors).length > 0) {
-            setErrors(validationErrors);
-        } else {
- try {
-      const data = {
-        username: formData.username,
-        password: formData.password,
-      };
-      setLoading(true);
-    //   const res = await axios.post("users/login", data);
-    //   if (res?.data?.success) {
-    //     localStorage.setItem("authDetails", JSON.stringify(res?.data?.data));
-        navigate("/video-frame");
-    //   } else {
-    //     message.error(res?.data?.message);
-    //   }
-    
-    } catch (e) {
-    } finally {
-      setLoading(false);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+  };
+
+  const validate = (): FormErrors => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+      newErrors.email = "Invalid email address";
     }
-        }
-    };
 
-    return (
-        <div className={styles.container}>
-            {/* LEFT SIDE - LOGIN FORM */}
-            <form className={styles.formContainer} onSubmit={handleSubmit} noValidate>
-                <div className={styles.topStrip}></div>
-                <h1 className={styles.title}>Log in to your account</h1>
-   <Input
-                    type="text"
-                    name="username"
-                    placeholder="Username"
-                    className={styles.input}
-                    value={formData.username}
-                    handleChange={handleChange}
-                    errors ={errors.username}
-                 errorClass   ={styles.error}
-                />
-                <Input
-                    type="password"
-                    name="password"
-                    placeholder="Password"
-                    className={styles.input}
-                    value={formData.password}
-                    handleChange={handleChange}
-                    errors ={errors.password}
-                 errorClass   ={styles.error}
-                    
-                />
+    if (!formData.password.trim()) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
 
-                <div className={styles.linkRow}>
-                    <a href="#" className={styles.link}>Forgot Username?</a>
-                    <span>|</span>
-                    <a href="/forget-password" className={styles.link}>Forgot Password?</a>
-                </div>
+    return newErrors;
+  };
 
-                <div>
-                    <button type="submit" className={styles.loginBtn}>Log In</button>
-                </div>
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
+    e.preventDefault();
+    console.log(formData, "check_formData");
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    dispatch(postAuthLogin(formData, successPermission));
+  };
 
-                <div className={styles.footerLinks}>
-                    <span>
-                        First-time user? <a href="/register" className={styles.link}>Register Now</a>
-                    </span>
-                    <a href="#" className={styles.link}>I can’t log in</a>
-                </div>
-            </form>
+  const successPermission = () => {
+    navigateTo(`/video-frame`);
+  };
 
-            {/* RIGHT SIDE - INFO SECTION */}
-            <div className={styles.infoSection}>
-                <h2 className={styles.infoTitle}>
-                    At MetLife, protecting your information is a top priority.
-                </h2>
-                <p className={styles.infoText}>
-                    You may have seen recent news coverage of customers of financial services companies falling victim to social engineering scams. Scammers impersonate a trusted company to convince their targets into revealing or handing over sensitive information such as insurance, banking or login credentials. This scamming can happen via text, email or websites set up to look like the trusted company.
-                </p>
-                <a href="#" className={styles.readMore}>Read More →</a>
-            </div>
-        </div>
-    );
+  /* ---------------- JSX ---------------- */
+
+  return (
+    <>
+      {authLoader && <FullScreenGradientLoader text="Loading..." />}
+      <Grid
+        container
+        justifyContent="center"
+        alignItems="center"
+        height="100vh"
+        sx={{ width: "100%" }}
+      >
+        {/* LEFT SECTION */}
+        <Grid
+          item
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          sx={{ width: { xs: "80%", lg: "50%" } }}
+        >
+          <Box sx={{ width: { xs: "100%", md: "80%" } }}>
+            <img src={oneFrame} alt="oneFrame" />
+
+            <Typography variant="h4" fontWeight={600} mb={1}>
+              Account Login
+            </Typography>
+
+            <Typography color="text.secondary" variant = "body1" mb={3}>
+              Enter your login details to continue
+            </Typography>
+
+            <Box component="form" onSubmit={handleSubmit} noValidate>
+              <Typography variant="body2" fontWeight={600}>
+                Email ID
+              </Typography>
+
+              <TextField
+                fullWidth
+                size="small"
+                name="email"
+                placeholder="john@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                error={!!errors.email}
+                helperText={errors.email}
+                margin="dense"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                  },
+                }}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          edge="end"
+                          sx={{ pointerEvents: "none" }}
+                        >
+                          <img src={mailIcon} alt="mailIcon" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+
+              <Typography variant="body2" mt={2} fontWeight={600}>
+                Password
+              </Typography>
+
+              <TextField
+                fullWidth
+                size="small"
+                name="password"
+                placeholder="Enter your password"
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={handleChange}
+                error={!!errors.password}
+                helperText={errors.password}
+                margin="dense"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                  },
+                }}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          edge="end"
+                        >
+                          {showPassword ? (
+                            <VisibilityOff
+                              sx={{ color: "#231F204D", fontSize: 20 }}
+                            />
+                          ) : (
+                            <Visibility
+                              sx={{ color: "#231F204D", fontSize: 20 }}
+                            />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+
+              <ButtonComp
+                fullWidth
+                variant="contained"
+                size="large"
+                sx={{
+                  mt: 3,
+                  py: 1,
+                  // borderRadius: 2,
+                  textTransform: "none",
+                  fontSize: 16,
+                  // backgroundColor: "#239DE0",
+                }}
+                type="submit"
+                disabled={authLoader}
+              >
+                Log in
+              </ButtonComp>
+            </Box>
+          </Box>
+        </Grid>
+
+        {/* RIGHT SECTION (lg+) */}
+        <Grid
+          item
+          display={{ xs: "none", lg: "block" }}
+          height="100vh"
+          sx={{ width: "50%" }}
+        >
+          <img
+            src={unnamed}
+            alt="login"
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        </Grid>
+      </Grid>
+    </>
+  );
 };
 
 export default Login;

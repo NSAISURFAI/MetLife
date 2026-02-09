@@ -12,6 +12,13 @@ import {
   Stack,
   Button,
   Tooltip,
+  Menu,
+  MenuItem,
+  Dialog,
+  Typography,
+  Box,
+  FormControl,
+  Select,
 } from "@mui/material";
 
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
@@ -23,7 +30,7 @@ import AddNewScriptPopup from "../popUps/addScripts";
 import { downloadScriptPdf, downloadScriptWord } from "../../utils";
 import { showToast } from "../../utils/toast";
 
-import { IoArrowBackCircleOutline } from "react-icons/io5";
+import { IoArrowBackCircleOutline, IoArrowForwardCircleOutline } from "react-icons/io5";
 import { useLocation, useNavigate, useParams } from "react-router";
 import copy from "../../assets/copy.svg";
 import reuse from "../../assets/reuse.svg";
@@ -51,7 +58,9 @@ import SinglePromptModal from "./SinglePromptModal";
 import { postSavePrompt } from "../../redux/features/promptSlice";
 import {
   getExtractCharacters,
+  postDeleteScene,
   postExtractCharacters,
+  postPromptSetupCharacters,
 } from "../../redux/features/scriptSlice";
 import { CharacterCarousel } from "./carousel/CharacterCarousel";
 
@@ -87,6 +96,8 @@ interface RootState {
   };
 }
 
+type FlowStep = "characters" | "mixed-options" | null;
+
 const DynamicTable: React.FC<DynamicTableProps> = ({
   columns = [],
   extraDetails = {},
@@ -111,14 +122,17 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
   const id: any = params?.id;
   const navigate = useNavigate();
   const { saveLoader, saveTranslatedData } = useSelector(
-    (store: RootState) => store.SaveTranslatedData
+    (store: RootState) => store.SaveTranslatedData,
   );
-  const { characterData } = useSelector((store) => store.Script);
+
+  const { characterData, promptData, scriptLoader } = useSelector(
+    (store) => store.Script,
+  );
   const { pathname } = useLocation();
   const { saveVisualContentLoader } = useSelector(
-    (store: RootState) => store.CreateVisualContent
+    (store: RootState) => store.CreateVisualContent,
   );
-  const { scriptLoader } = useSelector((store: RootState) => store.Script);
+  // const { scriptLoader } = useSelector((store: RootState) => store.Script);
   const [openDownloadPopup, setOpenDownloadPopup] = useState(false);
   const [openShowPopup, setOpenShowPopup] = useState(false);
   const [openRegeneratePopup, setOpenRegeneratePopup] = useState(false);
@@ -133,8 +147,20 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
   const [open, setOpen] = useState(false);
   const [openCharacterModal, setOpenCharacterModal] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [charImageExist, setCharImageExist] = useState(extraDetails?.char_image_exist);
-
+  const [charImageExist, setCharImageExist] = useState(
+    extraDetails?.char_image_exist,
+  );
+  const [openFlowDialog, setOpenFlowDialog] = useState(false);
+  const [flowStep, setFlowStep] = useState<FlowStep>(null);
+  const PROVIDERS = ["google", "azure", "gpt"] as const;
+  type ProviderType = (typeof PROVIDERS)[number];
+  const PROVIDER_LABELS: Record<ProviderType, string> = {
+    google: "GOOGLE",
+    azure: "AZURE",
+    gpt: "OneFrame Translator",
+  };
+  const [selectedProvider, setSelectedProvider] =
+    React.useState<ProviderType>("azure");
 
   useEffect(() => {
     setTableExtraData(extraDetails ?? {});
@@ -156,10 +182,20 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
   }, [saveTranslatedData, saveLoader]);
 
   useEffect(() => {
-    if (extraDetails?.char_image_exist === true) {
+    if (tableExtraData?.char_image_exist === true && id) {
       dispatch(getExtractCharacters(id));
     }
-  }, [id, dispatch, extraDetails?.char_image_exist]);
+  }, [id, dispatch, tableExtraData?.char_image_exist]);
+
+  // useEffect(() => {
+  //   if (
+  //     tableExtraData?.video_style === "mixed" &&
+  //     tableExtraData?.char_image_exist
+  //   ) {
+  //     setFlowStep("mixed-options");
+  //     setOpenFlowDialog(true);
+  //   }
+  // }, [tableExtraData?.char_image_exist,  ]);
 
   const handleSavePrompt = (prompt: string) => {
     const payload = { prompt };
@@ -168,13 +204,13 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
         id ?? "",
         payload,
         () => setOpenSavePrompt(false),
-        setOperations
-      )
+        setOperations,
+      ),
     );
   };
 
   const filteredLanguages = languages.filter(
-    (lang) => lang !== tableExtraData?.language
+    (lang) => lang !== tableExtraData?.language,
   );
 
   const actions = [
@@ -207,8 +243,16 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
               src={reuse}
               alt="regenerate"
               style={{
-                opacity: regenerateDisabled ? 0.5 : 1,
-                cursor: regenerateDisabled ? "not-allowed" : "pointer",
+                // opacity: regenerateDisabled ? 0.5 : 1,
+                // cursor: regenerateDisabled ? "not-allowed" : "pointer",
+                opacity:
+                  regenerateDisabled || pathname?.startsWith("SCRIPT-")
+                    ? 0.5
+                    : 1,
+                cursor:
+                  regenerateDisabled || pathname?.startsWith("SCRIPT-")
+                    ? "not-allowed"
+                    : "pointer",
               }}
             />
           </span>
@@ -239,7 +283,6 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
   ];
 
   const settingDataInRows = (data: any[]) => {
-    console.log("item", data);
     const mapped: SceneRow[] = (data ?? []).map((item: any, idx: number) => ({
       "Scene No.": idx + 1,
       Script: item?.description ?? item?.Script ?? "",
@@ -305,7 +348,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
               Type: data.type,
               id: data.fieldData?.id,
             }
-          : item
+          : item,
       );
       setRows(updated);
     } else {
@@ -349,6 +392,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
 
   const handleTranslateScript = async () => {
     if (!pdfId && !id) return;
+    if (!selectedLang || !selectedProvider) return;
 
     setOperations(true);
     setLoader(true);
@@ -358,7 +402,15 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
     const formData = new FormData();
     formData.append(id ? "script_id" : "file_id", String(file_id));
     formData.append("language", selectedLang);
-    formData.append("provider", "azure");
+    // formData.append("provider", "azure");
+    formData.append("provider", selectedProvider);
+
+    if (
+      tableExtraData?.version !== undefined &&
+      tableExtraData?.version !== null
+    ) {
+      formData.append("source_version", String(tableExtraData.version));
+    }
 
     try {
       const response = await fetch(`${BASE_URL}translate-script-json`, {
@@ -390,7 +442,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
 
     if (sceneData?.id) {
       const updated = rows.map((item) =>
-        item["Scene No."] === sceneData["Scene No."] ? { ...data } : item
+        item["Scene No."] === sceneData["Scene No."] ? { ...data } : item,
       );
       setTableExtraData({ ...extraDetails, scenes: updated });
     } else {
@@ -402,19 +454,25 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
 
   const handleSave = () => {
     setOperations(false);
+    const { script_status, saved_version, ...rest } = tableExtraData;
+
     const data = {
       data: {
-        ...tableExtraData,
+        ...rest,
+        script_id: id,
+        title: tableExtraData?.title,
+        version: tableExtraData?.version,
+        page: "script",
       },
+      is_save_action: true,
     };
     dispatch(
       postTranslatedDataSave(data, (id) => {
         if (pathname === "/translated-script") {
           navigate(`/scenes/${id}`);
         }
-      })
+      }),
     );
-
     setMakeChanges(false);
   };
 
@@ -425,8 +483,27 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
     setMakeChanges(true);
   };
 
+  // const editSceneForScript = () => {};
+
   const confirmDeleteScene = async (scene: SceneRow) => {
-    const payload = { script_id: id, scene_id: scene.id };
+    if (!id) return;
+    // dispatch(
+    //   postDeleteScene(
+    //     {
+    //       script_id: id,
+    //       scene_id: scene.id,
+    //       version: tableExtraData?.version,
+    //     },
+    //     setOpenDeletePopup,
+    //     // successDelete
+    //   )
+    // );
+
+    const payload = {
+      script_id: id,
+      scene_id: scene.id,
+      version: tableExtraData?.version,
+    };
     setDeleteLoader(true);
 
     try {
@@ -452,15 +529,38 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
     setRows(updated);
   };
 
-  const handleCreateVisualContent = () => {
-    dispatch(postCreateVisualContent(tableExtraData));
+  const handleOpenFlowDialog = () => {
+    if (tableExtraData?.video_style === "conversational") {
+      setFlowStep("characters");
+      setOpenFlowDialog(true);
+      return;
+    }
+
+    if (tableExtraData?.video_style === "mixed") {
+      setFlowStep("characters");
+      setOpenFlowDialog(true);
+      return;
+    }
+  };
+
+  const handleCloseFlowDialog = () => {
+    setOpenFlowDialog(false);
+  };
+
+  const handleCreateVisualContent = (flowType) => {
+    const payload = { ...tableExtraData };
+    if (tableExtraData?.video_style === "mixed") {
+      payload.flow_type = flowType;
+    }
+    dispatch(postCreateVisualContent(payload, setOpenFlowDialog));
   };
 
   const handleVersion = async (versionId?: string) => {
     if (!versionId) return;
     setLoader(true);
     try {
-      await api.get(`scripts/${versionId}`);
+      const result = await api.get(`scripts/${id}?version=${versionId}`);
+      setTableExtraData(result?.data);
     } catch (e: any) {
       showToast.error(e?.detail);
     } finally {
@@ -468,12 +568,12 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
     }
   };
 
-  const handleCharacterGenerateImages = () => {
-    if (!tableExtraData?.char_image_exist) {
-      dispatch(postExtractCharacters(id, () => {
-         setCharImageExist(true); 
-      }));
-    }
+  const handleCharacterGenerateImages = (prompts: Record<string, string>) => {
+    dispatch(
+      postExtractCharacters(id, () => {
+        setCharImageExist(true);
+      }),
+    );
   };
 
   const handleOpenCharacterModal = (index = 0) => {
@@ -485,12 +585,35 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
     setOpenCharacterModal(false);
   };
 
+  const handleSetupPrompt = () => {
+    if (!id) return;
+    dispatch(postPromptSetupCharacters(id));
+  };
+
+  const handleGenerateImagesFlow = () => {
+    if (promptData?.length) {
+      handleOpenCharacterModal();
+    } else {
+      handleSetupPrompt();
+    }
+  };
+
   return (
     <>
       <div className={styles1.header}>
-        <h2 className={styles1.title}>
-          {tableExtraData?.title || visualContentTitle || "Your Script"}
-        </h2>
+        {/* <h2 className={styles1.title}>
+          {tableExtraData?.title ||
+            visualContentTitle ||
+            tableExtraData?.upload_info?.title ||
+            "Your Script"}
+        </h2> */}
+
+        <Typography variant="h4">
+          {tableExtraData?.title ||
+            visualContentTitle ||
+            tableExtraData?.upload_info?.title ||
+            "Your Script"}
+        </Typography>
 
         {showDragAndActions && features && (
           <div className={styles1.headerButtons}>
@@ -505,16 +628,17 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
               arrow
             >
               <span>
-                <Button
+                <ButtonComp
                   variant="outlined"
-                  className={styles1.outlineBtn}
+                  colorType="secondary"
+                  // className={styles1.outlineBtn}
                   onClick={() =>
                     handleVersion(tableExtraData?.previous_version_id)
                   }
                   disabled={!tableExtraData?.previous_version_id}
                 >
                   ← Backward
-                </Button>
+                </ButtonComp>
               </span>
             </Tooltip>
 
@@ -529,25 +653,27 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
               arrow
             >
               <span>
-                <Button
+                <ButtonComp
                   variant="outlined"
-                  className={styles1.outlineBtn}
+                  colorType="secondary"
+                  // className={styles1.outlineBtn}
                   onClick={() => handleVersion(tableExtraData?.next_version_id)}
                   disabled={!tableExtraData?.next_version_id}
                 >
                   Forward →
-                </Button>
+                </ButtonComp>
               </span>
             </Tooltip>
 
             {/* Add Scene */}
-            <Button
+            <ButtonComp
               variant="outlined"
-              className={styles1.outlineBtn}
+              colorType="secondary"
+              // className={styles1.outlineBtn}
               onClick={() => addScene()}
             >
               + Add Scene
-            </Button>
+            </ButtonComp>
 
             {/* Show Source */}
             {!id?.startsWith("SCRIPT") && (
@@ -561,25 +687,25 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
                 arrow
               >
                 <span>
-                  <Button
+                  <ButtonComp
                     variant="contained"
-                    className={styles1.primaryBtn}
+                    // className={styles1.primaryBtn}
                     onClick={handleShowSource}
                     disabled={tableExtraData?.data_source == "openai"}
                   >
                     Show Source
-                  </Button>
+                  </ButtonComp>
                 </span>
               </Tooltip>
             )}
             {!id?.startsWith("SCRIPT") && (
-              <Button
+              <ButtonComp
                 variant="contained"
-                className={styles1.BtnSavePrompt}
+                // className={styles1.BtnSavePrompt}
                 onClick={() => setOpenSavePrompt(true)}
               >
                 Save Prompt
-              </Button>
+              </ButtonComp>
             )}
             <ShowSourcePopup
               open={openShowPopup}
@@ -594,11 +720,17 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
             >
               <IoArrowBackCircleOutline size={30} /> Back
             </Button>
+            <Button
+              className={styles1.icon}
+              onClick={() => navigate(`/create-visual-content/${tableExtraData?.prompt_batch_id}`)}
+              disabled={!tableExtraData?.prompt_batch_id}
+            >
+              Next <IoArrowForwardCircleOutline size={30} />
+            </Button>
           </div>
         )}
       </div>
 
-      {/* LOADERS */}
       {saveVisualContentLoader && (
         <FullScreenGradientLoader text="loading..." />
       )}
@@ -714,6 +846,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
         fieldData={popUpData}
         title={popupTitle}
         handleUpdate={handleUpdate}
+        tableData={tableExtraData}
       />
 
       <DeleteScenePopup
@@ -736,41 +869,30 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
         >
           {features && (
             <>
-              {charImageExist ? (
-                <Button
-                  variant="outlined"
-                  className={styles.largeOutline}
-                  onClick={() => handleOpenCharacterModal()}
-                >
-                  View Image
-                </Button>
-              ) : (
-                <Button
-                  variant="outlined"
-                  className={styles.largeOutline}
-                  onClick={() => {
-                    handleCharacterGenerateImages();
-                  }}
-                  disabled={saveTranslatedData === null || scriptLoader}
-                >
-                  Character Images
-                </Button>
-              )}
-
               <CharacterCarousel
                 open={openCharacterModal}
                 onClose={handleCloseCharacterModal}
                 characterData={characterData}
+                promptData={promptData}
                 currentIndex={currentIndex}
                 setCurrentIndex={setCurrentIndex}
+                onGenerateImages={handleCharacterGenerateImages}
+                tableExtraData={tableExtraData}
+                setOpenFlowDialog={setOpenFlowDialog}
               />
 
               <ButtonComp
                 label={loader ? "Translating" : "Translate Script"}
                 variant="contained"
-                sx={{ backgroundColor: "#239DE0" }}
+                sx={
+                  {
+                    // backgroundColor: "#239DE0"
+                  }
+                }
                 action={() => setOpen(true)}
-              />
+              >
+                {loader ? "Translating" : "Translate Script"}
+              </ButtonComp>
 
               {/* Language Popup */}
               <PopupModal
@@ -779,6 +901,30 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
                 title="Select Language"
               >
                 <div className={styles.languageList}>
+                  {/* Translate tool options */}
+                  {/* <div className={styles.providerSection}>
+                    <h4 className={styles.sectionTitle}>Select Provider</h4>
+
+                    <div className={styles.providerList}>
+                      {PROVIDERS.map((provider) => (
+                        <div
+                          key={provider}
+                          className={`${styles.providerItem} ${
+                            selectedProvider === provider
+                              ? styles.activeProvider
+                              : ""
+                          }`}
+                          onClick={() => setSelectedProvider(provider)}
+                        >
+                          {selectedProvider === provider && (
+                            <MdDone size={18} className={styles.tickIcon} />
+                          )}
+                          <span>{provider.toUpperCase()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div> */}
+                  {/* language options */}
                   {filteredLanguages.map((lang, index) => (
                     <div
                       key={index}
@@ -799,24 +945,47 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
                 </div>
 
                 <div className={styles.popupButtonRow}>
+                  <FormControl size="small" className={styles.providerDropdown}>
+                    <Select
+                      sx={{
+                        // height: "50px",
+                        width: "110px",
+                      }}
+                      value={selectedProvider}
+                      onChange={(e) =>
+                        setSelectedProvider(e.target.value as ProviderType)
+                      }
+                    >
+                      {PROVIDERS.map((provider) => (
+                        <MenuItem key={provider} value={provider}>
+                          {/* {provider.toUpperCase()} */}
+                          {PROVIDER_LABELS[provider]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                   <ButtonComp
                     label="Translate Script"
                     variant="contained"
-                    className={styles.downloadBtn}
+                    // className={styles.downloadBtn}
                     action={() => {
                       handleTranslateScript();
                       setOpen(false);
                     }}
-                  />
+                  >
+                    Translate Script
+                  </ButtonComp>
                 </div>
               </PopupModal>
             </>
           )}
 
           {showDragAndActions && features && (
-            <Button
+            <ButtonComp
               variant="outlined"
-              className={styles.largeOutline}
+              colorType="secondary"
+              // className={styles.largeOutline}
+              disabled={pathname.startsWith("SCRIPT-")}
               onClick={() => {
                 setMakeChanges(true);
                 setSceneData({});
@@ -824,7 +993,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
               }}
             >
               Regenerate Script
-            </Button>
+            </ButtonComp>
           )}
 
           {/* Regenerate Popup */}
@@ -841,47 +1010,230 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
           />
 
           {features && (
-            <Button
+            <ButtonComp
               variant="outlined"
-              className={styles.largeOutline}
+              colorType="secondary"
+              // className={styles.largeOutline}
               onClick={handleSave}
               disabled={saveLoader}
             >
               Save
-            </Button>
+            </ButtonComp>
           )}
 
           {features && (
-            <Button
+            <ButtonComp
+              colorType="download"
               variant="contained"
-              className={styles.successBtn}
+              // className={styles.successBtn}
               onClick={() => setOpenDownloadPopup(true)}
             >
               Download Script
-            </Button>
+            </ButtonComp>
           )}
 
           {showDragAndActions && features && (
-            <Tooltip
-              title={
-                !saveTranslatedData
-                  ? "Please save before creating visual content."
-                  : ""
-              }
-              placement="top"
-              arrow
-            >
-              <span>
-                <Button
-                  onClick={handleCreateVisualContent}
-                  variant="contained"
-                  className={styles.primaryBtn}
-                  disabled={saveTranslatedData === null || operations}
-                >
-                  Create Visual Content
-                </Button>
-              </span>
-            </Tooltip>
+            <>
+              <Tooltip
+                title={
+                  !saveTranslatedData
+                    ? "Please save before creating visual content."
+                    : ""
+                }
+                placement="top"
+                arrow
+              >
+                <span>
+                  <ButtonComp
+                    onClick={
+                      tableExtraData?.video_style === "conversational" ||
+                      tableExtraData?.video_style === "mixed"
+                        ? handleOpenFlowDialog
+                        : handleCreateVisualContent
+                    }
+                    variant="contained"
+                    colorType="secondary"
+                    // className={styles.primaryBtn}
+                    disabled={
+                      saveTranslatedData === null ||
+                      operations ||
+                      // saveTranslatedData?.is_save_action === false
+                      !saveTranslatedData?.saved_version
+                      || tableExtraData?.prompt_batch_id
+                    }
+                  >
+                    Create Visual Content
+                  </ButtonComp>
+                </span>
+              </Tooltip>
+              {tableExtraData?.video_style === "conversational" ||
+              tableExtraData?.video_style === "mixed" ? (
+                <>
+                  <Dialog
+                    open={openFlowDialog}
+                    onClose={handleCloseFlowDialog}
+                    maxWidth="sm"
+                    fullWidth
+                    PaperProps={{
+                      sx: { borderRadius: 3, p: 3, textAlign: "center" },
+                    }}
+                  >
+                    {tableExtraData?.video_style === "conversational" ? (
+                      <Typography variant="h5" fontWeight={600} mb={1}>
+                        Conversational Video Flow
+                      </Typography>
+                    ) : (
+                      <Typography variant="h5" fontWeight={600} mb={1}>
+                        Conmbined Video Flow
+                      </Typography>
+                    )}
+
+                    <Typography color="text.secondary" mb={4}>
+                      Choose to proceed:
+                    </Typography>
+
+                    <Box display="flex" justifyContent="center" gap={4} mb={4}>
+                      {/* {
+                      (!tableExtraData?.char_image_exist ||
+                        tableExtraData?.video_style === "conversational") &&
+                        !(
+                          tableExtraData?.video_style === "mixed" &&
+                          characterData?.length > 0
+                        ) && ( */}
+                      {((tableExtraData?.video_style === "conversational" &&
+                        !tableExtraData?.char_image_exist) ||
+                        (tableExtraData?.video_style === "mixed" &&
+                          !characterData?.length)) && (
+                        <Box
+                          onClick={handleGenerateImagesFlow}
+                          sx={{
+                            cursor: "pointer",
+                            width: 200,
+                            p: 2,
+                            borderRadius: 2,
+                            border: "1px solid #e0e0e0",
+                            transition: "0.2s",
+                            "&:hover": {
+                              boxShadow: 3,
+                              transform: "translateY(-2px)",
+                            },
+                          }}
+                        >
+                          <Typography fontWeight={600}>
+                            {promptData?.length
+                              ? "View existing prompts & Images"
+                              : "Create/Setup prompts"}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Generate character images
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {tableExtraData?.char_image_exist &&
+                        tableExtraData?.video_style === "conversational" && (
+                          <Box
+                            onClick={() => {
+                              handleCloseFlowDialog();
+                              handleOpenCharacterModal();
+                            }}
+                            sx={{
+                              cursor: "pointer",
+                              width: 200,
+                              p: 2,
+                              borderRadius: 2,
+                              border: "1px solid #e0e0e0",
+                              transition: "0.2s",
+                              "&:hover": {
+                                boxShadow: 3,
+                                transform: "translateY(-2px)",
+                              },
+                            }}
+                          >
+                            <Typography fontWeight={600}>
+                              View Existing Images
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Continue conversational flow
+                            </Typography>
+                          </Box>
+                        )}
+                      {/* mixed */}
+                      {tableExtraData?.video_style === "mixed" && (
+                        <>
+                          <Box
+                            display="flex"
+                            justifyContent="center"
+                            gap={4}
+                            mb={4}
+                          >
+                            {tableExtraData?.video_style === "mixed" &&
+                              characterData?.length > 0 && (
+                                <Box
+                                  onClick={() =>
+                                    handleCreateVisualContent("narrative")
+                                  }
+                                  sx={{
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "center",
+                                    width: 160,
+                                    p: 2,
+                                    borderRadius: 2,
+                                    border: "1px solid #e0e0e0",
+                                    transition: "0.2s",
+                                    "&:hover": {
+                                      boxShadow: 3,
+                                      transform: "translateY(-2px)",
+                                    },
+                                  }}
+                                >
+                                  <Typography fontWeight={600}>
+                                    L3 – Narrative Flow
+                                  </Typography>
+                                </Box>
+                              )}
+                            {tableExtraData?.video_style === "mixed" &&
+                              characterData?.length > 0 && (
+                                <Box
+                                  onClick={() =>
+                                    handleCreateVisualContent("conversation")
+                                  }
+                                  sx={{
+                                    cursor: "pointer",
+                                    width: 160,
+                                    p: 2,
+                                    borderRadius: 2,
+                                    border: "1px solid #e0e0e0",
+                                    transition: "0.2s",
+                                    "&:hover": {
+                                      boxShadow: 3,
+                                      transform: "translateY(-2px)",
+                                    },
+                                  }}
+                                >
+                                  <Typography fontWeight={600}>
+                                    L4 – Conversational Flow
+                                  </Typography>
+                                </Box>
+                              )}
+                          </Box>
+                        </>
+                      )}
+                    </Box>
+
+                    <ButtonComp
+                      onClick={handleCloseFlowDialog}
+                      variant="outlined"
+                      sx={{ px: 4 }}
+                    >
+                      Cancel
+                    </ButtonComp>
+                  </Dialog>
+                </>
+              ) : null}
+            </>
           )}
         </Stack>
 
@@ -891,7 +1243,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
           prompt={latestPrompt}
           onSave={handleSavePrompt}
           size="md"
-          extraDetails={extraDetails}
+          extraDetails={tableExtraData}
           operations={operations}
         />
 
@@ -906,3 +1258,81 @@ const DynamicTable: React.FC<DynamicTableProps> = ({
 };
 
 export default DynamicTable;
+
+// :
+//   (tableExtraData?.video_style === "mixed" && promptData?.length > 0) ? (
+//   <>
+//     <Dialog
+//       open={openFlowDialog}
+//       onClose={handleCloseFlowDialog}
+//       maxWidth="sm"
+//       fullWidth
+//       PaperProps={{
+//         sx: {
+//           borderRadius: 3,
+//           p: 3,
+//           textAlign: "center",
+//         },
+//       }}
+//     >
+//       <Typography variant="h5" fontWeight={600} mb={1}>
+//         Conmbined Video Flow
+//       </Typography>
+
+//       <Typography color="text.secondary" mb={4}>
+//         Choose to proceed:
+//       </Typography>
+
+//       <Box display="flex" justifyContent="center" gap={4} mb={4}>
+//         <Box
+//           onClick={handleCreateVisualContent}
+//           sx={{
+//             display: "flex",
+//             flexDirection: "column",
+//             justifyContent: "center",
+//             cursor: "pointer",
+//             width: 160,
+//             p: 2,
+//             borderRadius: 2,
+//             border: "1px solid #e0e0e0",
+//             transition: "0.2s",
+//             "&:hover": {
+//               boxShadow: 3,
+//               transform: "translateY(-2px)",
+//             },
+//           }}
+//         >
+//           <Typography fontWeight={600}>
+//             L3 – Narrative Flow
+//           </Typography>
+//         </Box>
+//         <Box
+//           sx={{
+//             cursor: "pointer",
+//             width: 160,
+//             p: 2,
+//             borderRadius: 2,
+//             border: "1px solid #e0e0e0",
+//             transition: "0.2s",
+//             "&:hover": {
+//               boxShadow: 3,
+//               transform: "translateY(-2px)",
+//             },
+//           }}
+//         >
+//           <Typography fontWeight={600}>
+//             L4 – Conversational Flow
+//           </Typography>
+//         </Box>
+//       </Box>
+
+//       <Button
+//         onClick={handleCloseFlowDialog}
+//         variant="outlined"
+//         sx={{ px: 4 }}
+//       >
+//         Cancel
+//       </Button>
+//     </Dialog>
+//   </>
+// )

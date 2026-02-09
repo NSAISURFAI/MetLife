@@ -62,7 +62,7 @@ export const postTranslatedDataSave =
       }
     } catch (error) {
       console.error(error);
-      toast.error("Something went wrong");
+      // toast.error("Something went wrong");
     } finally {
       dispatch(setSaveLoader(false));
     }
@@ -78,7 +78,7 @@ export const postTranslatedDataSave =
         // dispatch(setSaveTranslatedData(response.data));
       }
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       toast.error("Something went wrong");
     } finally {
       dispatch(setSaveLoader(false));

@@ -28,6 +28,7 @@ import {
   deleteGenerateVisualContent,
   postEditGenerateVisualContent,
 } from "../../../redux/features/generateVisualSlice";
+import ButtonComp from "../Buton/Button";
 
 // ------------------ TYPES ------------------
 
@@ -48,7 +49,7 @@ export interface ColumnType {
     value: any,
     row: VisualRow,
     setPreviewImage: (val: any) => void,
-    setVisualImages: (val: any) => void
+    setVisualImages: (val: any) => void,
   ) => React.ReactNode;
 }
 
@@ -64,9 +65,12 @@ interface VisualContentTableProps {
   updateImagesInRow: (
     scene_id: string | number,
     images: any[],
-    type: "image" | "video"
+    type: "image" | "video",
   ) => void;
-  updatePromptInRow: (obj: { new_prompt: string; scene_id: string | number }) => void;
+  updatePromptInRow: (obj: {
+    new_prompt: string;
+    scene_id: string | number;
+  }) => void;
 }
 
 // --------------------------------------------------
@@ -80,11 +84,11 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
   conversational,
 }) => {
   const { generateVisualContentData, generateVisualLoader } = useSelector(
-    (store: any) => store.GenerateVisualContent
+    (store: any) => store.GenerateVisualContent,
   );
 
   const { audioAnimationLoader } = useSelector(
-    (store: any) => store.AudioAnimation
+    (store: any) => store.AudioAnimation,
   );
 
   const prompt_batch_id = generateVisualContentData?.prompt_batch_id;
@@ -115,6 +119,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
   };
 
   const handleEditDescription = (row: VisualRow) => {
+    setPreviewImage(null);
     const payload = {
       script_id: id,
       scene_id: row.scene_id,
@@ -125,12 +130,13 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
     dispatch(
       postEditGenerateVisualContent(payload, () => {
         setOpenPromptModal(false);
-      }) as any
+      }, id) as any,
     );
 
     updatePromptInRow({
       new_prompt: selectedPrompt,
       scene_id: row.scene_id,
+      // image_uploaded_urls: previewImage || row.image_uploaded_urls
     });
   };
 
@@ -152,7 +158,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
       dispatch(
         deleteGenerateVisualContent(payload, () => {
           const updatedImages = visuaiImages.image_uploaded_urls.filter(
-            (img: any) => img.url !== currentImage
+            (img: any) => img.url !== currentImage,
           );
 
           updateImagesInRow(visuaiImages.scene_id, updatedImages, "image");
@@ -166,7 +172,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
             setIndex(updatedImages.length - 1);
           }
           if (updatedImages.length === 0) setPreviewImage(null);
-        }) as any
+        }) as any,
       );
     }
 
@@ -180,7 +186,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
       dispatch(
         deleteGenerateVisualContent(payload, () => {
           const updatedVideos = visuaiImages.video_uploaded_urls.filter(
-            (vid: any) => vid.url !== currentVideo
+            (vid: any) => vid.url !== currentVideo,
           );
 
           updateImagesInRow(visuaiImages.scene_id, updatedVideos, "video");
@@ -194,7 +200,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
             setIndex(updatedVideos.length - 1);
           }
           if (updatedVideos.length === 0) setPreviewImage(null);
-        }) as any
+        }) as any,
       );
     }
   };
@@ -203,8 +209,12 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
 
   return (
     <>
-      {generateVisualLoader && <FullScreenGradientLoader text={conversational ? "Downloading..." : "loading..."} />}
-      {audioAnimationLoader && <FullScreenGradientLoader text="extracting..." />}
+      {/* {generateVisualLoader && <FullScreenGradientLoader text={conversational ? "Downloading..." : "loading..."} />}
+       */}
+      {generateVisualLoader && <FullScreenGradientLoader text="loading..." />}
+      {audioAnimationLoader && (
+        <FullScreenGradientLoader text="extracting..." />
+      )}
 
       <TableContainer className={styles.tablePaper}>
         <Table className={styles.tableRoot}>
@@ -232,7 +242,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
                           row[col.key],
                           row,
                           setPreviewImage,
-                          setVisualImages
+                          setVisualImages,
                         )
                       : row[col.key]}
                   </TableCell>
@@ -261,7 +271,11 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
 
       {/* ------------ PREVIEW DIALOG ------------ */}
       {previewImage && (
-        <Dialog open={!!previewImage} onClose={() => setPreviewImage(null)} maxWidth={false}>
+        <Dialog
+          open={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+          maxWidth={false}
+        >
           <div
             style={{
               position: "absolute",
@@ -272,18 +286,20 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
               gap: 8,
             }}
           >
-            <Button
+            <ButtonComp
               variant="contained"
-              sx={{
-                textTransform: "none",
-                backgroundColor: "#1976d2",
-                color: "#fff",
-                borderRadius: "8px",
-              }}
+              sx={
+                {
+                  // textTransform: "none",
+                  // backgroundColor: "#1976d2",
+                  // color: "#fff",
+                  // borderRadius: "8px",
+                }
+              }
               onClick={() => handlePrompt(visuaiImages)}
             >
               Prompt
-            </Button>
+            </ButtonComp>
 
             {visuaiImages?.image_uploaded_urls?.length > 0 && (
               <IconButton
@@ -324,7 +340,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
         </Dialog>
       )}
 
-      {/* ------------ PROMPT EDIT MODAL ------------ */}
+      {/* ------------ Image Edit PROMPT MODAL ------------ */}
       <Dialog
         open={openPromptModal}
         onClose={() => setOpenPromptModal(false)}
@@ -333,7 +349,7 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
       >
         <DialogContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Description
+            Image prompt
           </Typography>
 
           <TextField
@@ -347,13 +363,20 @@ const VisualContentTable: React.FC<VisualContentTableProps> = ({
           />
 
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-            <Button variant="outlined" onClick={() => setOpenPromptModal(false)}>
+            <ButtonComp
+              variant="outlined"
+              onClick={() => setOpenPromptModal(false)}
+              colorType="secondary"
+            >
               Close
-            </Button>
+            </ButtonComp>
 
-            <Button variant="contained" onClick={() => handleEditDescription(visuaiImages)}>
+            <ButtonComp
+              variant="contained"
+              onClick={() => handleEditDescription(visuaiImages)}
+            >
               Submit
-            </Button>
+            </ButtonComp>
           </Box>
         </DialogContent>
       </Dialog>

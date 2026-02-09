@@ -28,6 +28,7 @@ import devnagri from "../assets/NotoSansDevanagari-Regular.ttf";
 import bengali from "../assets/NotoSansBengali-Regular.ttf";
 import PdfDocument from "../components/common/Pdf/PdfDocument";
 import React from "react";
+import secureLocalStorage from "react-secure-storage";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -117,9 +118,6 @@ const styles = StyleSheet.create({
 // PDF DOWNLOAD
 // ==========================
 export const downloadScriptPdf = async (data: any, uploadDownload = false) => {
-  console.log(data, "datadatadata");
-  const fileName = localStorage.getItem("file_name") || "Script";
-  let updatedData = data?.upload_info ? data?.scenes : data;
   const blob = await pdf(
     React.createElement(PdfDocument, { data, uploadDownload })
   ).toBlob();
@@ -127,9 +125,9 @@ export const downloadScriptPdf = async (data: any, uploadDownload = false) => {
   saveAs(
     blob,
     data?.upload_info
-      ? `${data?.upload_info?.filename}.pdf`
-      : data?.source == "file"
-      ? `${data?.filename}.pdf`
+      ? `${data?.upload_info?.title}.pdf`
+      : data?.upload_info?.source == "file"
+      ? `${data?.title}.pdf`
       : `${data?.language.slice(0, 2) + "_"}${data?.title}.pdf`
   );
 };
@@ -138,9 +136,8 @@ export const downloadScriptPdf = async (data: any, uploadDownload = false) => {
 // WORD DOWNLOAD
 // ==========================
 export const downloadScriptWord = (data: any, uploadDownload = false) => {
-  const fileName = localStorage.getItem("file_name");
+  // const fileName = localStorage.getItem("file_name");
   if (!data) return;
-  console.log(data, "data_checK_word");
 
   const {
     title,
@@ -293,17 +290,22 @@ export const downloadScriptWord = (data: any, uploadDownload = false) => {
     saveAs(
       blob,
       data?.upload_info
-        ? `${data?.upload_info?.filename}.docx`
-        : data?.source == "file"
-        ? `${data?.filename}.docx`
+        ? `${data?.upload_info?.title}.docx`
+        : data?.upload_info?.source == "file"
+        ? `${data?.title}.docx`
         : `${data?.language.slice(0, 2) + "_"}${data?.title}.docx`
     );
   });
 };
 
-export const getToken = (): string | undefined => {
-  const data = JSON.parse(localStorage.getItem("authDetails") || "null");
-  return data?.access_token;
+// export const getToken = (): string | undefined => {
+//   const data = JSON.parse(localStorage.getItem("authDetails") || "null");
+//   return data?.access_token;
+// };
+
+
+export const getToken = (): string | null => {
+  return secureLocalStorage.getItem("token") as string | null;
 };
 
 export const downloadCSV = (
@@ -375,3 +377,83 @@ export const convertToISTParts = (isoString: string): number => {
 
   return Math.floor((backendIST.getTime() - nowIST.getTime()) / 1000) + 60;
 };
+
+type Gender = "male" | "female";
+
+export const VOICE_GENDER_MAP: Record<string, Gender> = {
+  // ===== Azure =====
+  "en-US-JennyNeural": "female",
+  "en-US-AriaNeural": "female",
+  "en-US-SaraNeural": "female",
+  "en-US-GuyNeural": "male",
+  "en-US-DavisNeural": "male",
+
+  "es-MX-JorgeNeural": "male",
+  "es-MX-DaliaNeural": "female",
+  "es-ES-ElviraNeural": "female",
+  "es-ES-ArnauNeural": "male",
+  "es-ES-AlvaroNeural": "male",
+  "es-ES-AbrilNeural": "female",
+
+  "ar-SA-ZariyahNeural": "female",
+  "ar-SA-HamedNeural": "male",
+  "ar-EG-SalmaNeural": "female",
+  "ar-EG-ShakirNeural": "male",
+
+  "hi-IN-SwaraNeural": "female",
+  "hi-IN-MadhurNeural": "male",
+
+  "ne-NP-HemkalaNeural": "female",
+  "ne-NP-SagarNeural": "male",
+
+  "pt-PT-RaquelNeural": "female",
+  "pt-PT-DuarteNeural": "male",
+  "pt-BR-FranciscaNeural": "female",
+  "pt-BR-AntonioNeural": "male",
+
+  "ro-RO-AlinaNeural": "female",
+  "ro-RO-EmilNeural": "male",
+
+  "uk-UA-PolinaNeural": "female",
+  "uk-UA-OstapNeural": "male",
+
+  "bn-IN-TanishaaNeural": "female",
+  "bn-IN-BashkarNeural": "male",
+  "bn-BD-NabanitaNeural": "female",
+  "bn-BD-PradeepNeural": "male",
+
+  // ===== Speechify =====
+  oliver: "male",
+  henry: "male",
+  emily: "female",
+  alejandro: "male",
+  celia: "female",
+  joao: "male",
+  hemant: "male",
+  priya: "female",
+  avik: "male",
+  brishti: "female",
+  suman: "male",
+  anita: "female",
+
+  // ===== Voicemaker =====
+  "ai2-Stacy": "female",
+  "ai3-Jony": "male",
+  "ai3-es-ES-Alvaro": "male",
+  "AI3-ES-ES-Elvira": "female",
+
+  "ai2-bn-IN-Binod": "male",
+  "ai2-bn-IN-Charu": "female",
+
+  "ai2-uk-UA-Aleksandra": "female",
+  "ai2-ro-RO-Corina": "female",
+
+  "ai2-pt-PT-Diogo": "male",
+  "ai2-pt-PT-Margarida": "female",
+
+  "ai2-hi-IN-Nikhil": "male",
+  "ai2-hi-IN-Zoya": "female",
+
+  "ai2-ar-XA-Nadir": "male",
+};
+
